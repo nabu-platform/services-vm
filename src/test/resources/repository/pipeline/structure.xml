@@ -1,0 +1,4 @@
+<structure xmlns="http://nabu.be/structure-v1" name="pipeline" type="be.nabu.eai.module.service.vm.PipelineStructure">
+	<field name="bonus" type="be.nabu.types.Long"/>
+	<structure name="company" reference="company"/>
+</structure>

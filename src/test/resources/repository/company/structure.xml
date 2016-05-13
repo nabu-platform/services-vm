@@ -1,0 +1,10 @@
+<structure xmlns="http://nabu.be/structure-v1" name="company">
+	<structure name="unit" maxOccurs="unbounded">
+		<field name="name"/>
+		<structure name="employee" maxOccurs="unbounded">
+			<field name="name"/>
+			<field name="age" type="be.nabu.types.Long"/>
+			<field name="bonus" type="be.nabu.types.Long" minOccurs="0"/>
+		</structure>	
+	</structure>
+</structure>

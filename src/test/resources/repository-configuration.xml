@@ -1,0 +1,31 @@
+<repository xmlns="http://nabu.be/repository-config-v1" xmlns:file="http://nabu.be/file-provider-configuration-v1" xmlns:event="http://nabu.be/event-manager-configuration-v1">
+	
+	<provider class="be.nabu.eai.module.resource.file.FileProvider">
+		<file:root>/home/alex/workspaces/nabu/module-service-vm/src/test/resources/repository</file:root>
+	</provider>
+	
+	<subscriptions/>
+	<!--
+ 		<event:subscription event="be.nabu.repository.events.NodeLifeCycleEvent" subscriber="be.nabu.management.jboss.JBossJDBCConnectionManager">
+			<event:property name="lifeCycle">CREATE</event:property>
+			<event:property name="wrapperClassName">be.nabu.modules.jdbc.JDBCConnectionDefinition</event:property>
+			<event:property name="pre">true</event:property>
+		</event:subscription>	
+		<event:subscription event="be.nabu.repository.events.NodeLifeCycleEvent" subscriber="be.nabu.management.jboss.JBossJDBCConnectionManager">
+			<event:property name="lifeCycle">UPDATE</event:property>
+			<event:property name="wrapperClassName">be.nabu.modules.jdbc.JDBCConnectionDefinition</event:property>
+			<event:property name="pre">true</event:property>
+		</event:subscription>	
+ 
+ 		<event:subscription event="be.nabu.repository.events.NodeLifeCycleEvent" subscriber="be.nabu.management.jboss.JBossJDBCConnectionManager">
+			<event:property name="lifeCycle">DELETE</event:property>
+			<event:property name="wrapperClassName">be.nabu.modules.jdbc.JDBCConnectionDefinition</event:property>
+			<event:property name="pre">true</event:property>
+		</event:subscription>
+		<event:subscription event="be.nabu.repository.events.RepositoryLifeCycleEvent" subscriber="be.nabu.management.jboss.JBossJDBCConnectionManager">
+			<event:property name="lifeCycle">LOAD</event:property>
+			<event:property name="post">true</event:property>
+		</event:subscription>										
+	</subscriptions>
+	-->		
+</repository>
