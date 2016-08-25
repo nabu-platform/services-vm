@@ -136,50 +136,55 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	public ComplexType getPipeline(ServiceContext serviceContext) {
 		if (this.indexName != null || this.variable != null) {
 			if (pipeline == null) {
-				// create a new structure
-				pipeline = new PipelineExtension();
-				// that extends the parent structure
-				pipeline.setSuperType(getParent().getPipeline(serviceContext));
-				// inherit the name to make it clearer when marshalling
-				pipeline.setName(getParent().getPipeline(serviceContext).getName());
-				// add the index if necessary
-				if (indexName != null) {
-					try {
-						TypeOperation operation = getOperation(query);
-						// the operation must be resolved against the parent pipeline
-						// you may be using variables exposed by it rather then the original service
-						ComplexType parentPipeline = getParent().getPipeline(serviceContext);
-						CollectionHandlerProvider<?, ?> collectionHandler = operation.getReturnCollectionHandler(parentPipeline);
-						Class<?> indexType = collectionHandler == null ? null : collectionHandler.getIndexClass();
-						if (indexType == null) {
-							indexType = Object.class;
+				synchronized(this) {
+					if (pipeline == null) {
+						// create a new structure
+						PipelineExtension pipeline = new PipelineExtension();
+						// that extends the parent structure
+						pipeline.setSuperType(getParent().getPipeline(serviceContext));
+						// inherit the name to make it clearer when marshalling
+						pipeline.setName(getParent().getPipeline(serviceContext).getName());
+						// add the index if necessary
+						if (indexName != null) {
+							try {
+								TypeOperation operation = getOperation(query);
+								// the operation must be resolved against the parent pipeline
+								// you may be using variables exposed by it rather then the original service
+								ComplexType parentPipeline = getParent().getPipeline(serviceContext);
+								CollectionHandlerProvider<?, ?> collectionHandler = operation.getReturnCollectionHandler(parentPipeline);
+								Class<?> indexType = collectionHandler == null ? null : collectionHandler.getIndexClass();
+								if (indexType == null) {
+									indexType = Object.class;
+								}
+								DefinedSimpleType<?> wrapped = SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(indexType);
+								if (wrapped != null) {
+									pipeline.add(new SimpleElementImpl(this.indexName, wrapped, pipeline, new ValueImpl<Integer>(new MinInclusiveProperty<Integer>(Integer.class), 0)), false);
+								}
+								else {
+									pipeline.add(new ComplexElementImpl(this.indexName, (ComplexType) BeanResolver.getInstance().resolve(indexType), pipeline, new ValueImpl<Integer>(new MinInclusiveProperty<Integer>(Integer.class), 0)), false);	
+								}
+							}
+							catch (ParseException e) {
+								throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
+							}
 						}
-						DefinedSimpleType<?> wrapped = SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(indexType);
-						if (wrapped != null) {
-							pipeline.add(new SimpleElementImpl(this.indexName, wrapped, pipeline, new ValueImpl<Integer>(new MinInclusiveProperty<Integer>(Integer.class), 0)), false);
+						// now the result of the query...
+						if (variable != null) {
+							try {
+								TypeOperation operation = getOperation(query);
+								// the operation must be resolved against the parent pipeline
+								// you may be using variables exposed by it rather then the original service
+								Type returnType = operation.getReturnType(getParent().getPipeline(serviceContext));
+								Element<?> element = returnType instanceof ComplexType
+									? new ComplexElementImpl(variable, (ComplexType) returnType, pipeline)
+									: new SimpleElementImpl(variable, (SimpleType<?>) returnType, pipeline);
+								pipeline.add(element, false);
+							}
+							catch (ParseException e) {
+								throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
+							}
 						}
-						else {
-							pipeline.add(new ComplexElementImpl(this.indexName, (ComplexType) BeanResolver.getInstance().resolve(indexType), pipeline, new ValueImpl<Integer>(new MinInclusiveProperty<Integer>(Integer.class), 0)), false);	
-						}
-					}
-					catch (ParseException e) {
-						throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
-					}
-				}
-				// now the result of the query...
-				if (variable != null) {
-					try {
-						TypeOperation operation = getOperation(query);
-						// the operation must be resolved against the parent pipeline
-						// you may be using variables exposed by it rather then the original service
-						Type returnType = operation.getReturnType(getParent().getPipeline(serviceContext));
-						Element<?> element = returnType instanceof ComplexType
-							? new ComplexElementImpl(variable, (ComplexType) returnType, pipeline)
-							: new SimpleElementImpl(variable, (SimpleType<?>) returnType, pipeline);
-						pipeline.add(element, false);
-					}
-					catch (ParseException e) {
-						throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
+						this.pipeline = pipeline;
 					}
 				}
 			}

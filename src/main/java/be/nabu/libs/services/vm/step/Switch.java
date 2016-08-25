@@ -45,10 +45,11 @@ public class Switch extends BaseStepGroup implements LimitedStepGroup {
 			else {
 				Object result = getVariable(context.getServiceInstance().getCurrentPipeline(), child.getLabel());
 				if (toMatch != null && result != null) {
-					result = ConverterFactory.getInstance().getConverter().convert(result, toMatch.getClass());
-					if (result == null) {
-						throw new IllegalArgumentException("Can not convert the result of the label to the type of the switch variable");
+					Object converted = ConverterFactory.getInstance().getConverter().convert(result, toMatch.getClass());
+					if (converted == null) {
+						throw new IllegalArgumentException("Can not convert the result '" + result + "' of the label to the type of the switch variable: " + toMatch.getClass());
 					}
+					result = converted;
 				}
 				if ((result == null && toMatch == null) || (result != null && toMatch != null && result.equals(toMatch))) {
 					execute(child, context);

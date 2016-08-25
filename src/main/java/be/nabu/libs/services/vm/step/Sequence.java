@@ -181,19 +181,24 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	public ComplexType getPipeline(ServiceContext serviceContext) {
 		if (this.transactionVariable != null) {
 			if (pipeline == null) {
-				// create a new structure
-				pipeline = new PipelineExtension();
-				// that extends the parent structure
-				pipeline.setSuperType(super.getPipeline(serviceContext));
-				// inherit the name to make it clearer when marshalling
-				pipeline.setName(getServiceDefinition().getPipeline().getName());
-				pipeline.setProperty(new ValueImpl<String>(CommentProperty.getInstance(), getId()));
-				// add the variable
-				pipeline.add(new SimpleElementImpl<String>(
-					transactionVariable, 
-					getSimpleTypeWrapper().wrap(String.class), 
-					pipeline), false
-				);
+				synchronized(this) {
+					if (pipeline == null) {
+						// create a new structure
+						PipelineExtension pipeline = new PipelineExtension();
+						// that extends the parent structure
+						pipeline.setSuperType(super.getPipeline(serviceContext));
+						// inherit the name to make it clearer when marshalling
+						pipeline.setName(getServiceDefinition().getPipeline().getName());
+						pipeline.setProperty(new ValueImpl<String>(CommentProperty.getInstance(), getId()));
+						// add the variable
+						pipeline.add(new SimpleElementImpl<String>(
+							transactionVariable, 
+							getSimpleTypeWrapper().wrap(String.class), 
+							pipeline), false
+						);
+						this.pipeline = pipeline;
+					}
+				}
 			}
 			return pipeline;
 		}

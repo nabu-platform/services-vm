@@ -60,14 +60,19 @@ public class Catch extends BaseStepGroup implements LimitedStepGroup {
 	public ComplexType getPipeline(ServiceContext serviceContext) {
 		// we need to inject the exception 
 		if (pipeline == null && variable != null) {
-			pipeline = new PipelineExtension();
-			pipeline.setSuperType(getParent().getPipeline(serviceContext));
-			pipeline.setName(getParent().getPipeline(serviceContext).getName());
-			pipeline.add(new ComplexElementImpl(
-				variable, 
-				(ComplexType) BeanResolver.getInstance().resolve(getCommonParent()),
-				pipeline
-			), false);
+			synchronized(this) {
+				if (pipeline == null && variable != null) {
+					PipelineExtension pipeline = new PipelineExtension();
+					pipeline.setSuperType(getParent().getPipeline(serviceContext));
+					pipeline.setName(getParent().getPipeline(serviceContext).getName());
+					pipeline.add(new ComplexElementImpl(
+						variable, 
+						(ComplexType) BeanResolver.getInstance().resolve(getCommonParent()),
+						pipeline
+					), false);
+					this.pipeline = pipeline;
+				}
+			}
 		}
 		return pipeline == null ? getParent().getPipeline(serviceContext) : pipeline;
 	}

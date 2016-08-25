@@ -129,28 +129,32 @@ public class Map extends BaseStepGroup implements LimitedStepGroup {
 	@Override
 	public ComplexType getPipeline(ServiceContext serviceContext) {
 		if (pipeline == null) {
-			// create a new structure
-			PipelineExtension structure = new PipelineExtension();
-			// that extends the parent structure
-			structure.setSuperType(getParent().getPipeline(serviceContext));
-			// inherit the name to make it clearer when marshalling
-			structure.setName(getServiceDefinition().getPipeline().getName());
-			structure.setProperty(new ValueImpl<String>(CommentProperty.getInstance(), getId()));
-			boolean changed = false;
-			for (Step child : getChildren()) {
-				if (child instanceof Invoke) {
-					Invoke invoke = (Invoke) child;
-					// if you don't set a result name, the result will not be injected into the pipeline, hence no need to define it
-					if (invoke.getResultName() != null) {
-						changed = true;
-						Service service = invoke.getService(serviceContext);
-						if (service != null) {
-							structure.add(new ComplexElementImpl(invoke.getResultName(), service.getServiceInterface().getOutputDefinition(), structure, new ValueImpl<Boolean>(HiddenProperty.getInstance(), true)), false);
+			synchronized(this) {
+				if (pipeline == null) {
+					// create a new structure
+					PipelineExtension structure = new PipelineExtension();
+					// that extends the parent structure
+					structure.setSuperType(getParent().getPipeline(serviceContext));
+					// inherit the name to make it clearer when marshalling
+					structure.setName(getServiceDefinition().getPipeline().getName());
+					structure.setProperty(new ValueImpl<String>(CommentProperty.getInstance(), getId()));
+					boolean changed = false;
+					for (Step child : getChildren()) {
+						if (child instanceof Invoke) {
+							Invoke invoke = (Invoke) child;
+							// if you don't set a result name, the result will not be injected into the pipeline, hence no need to define it
+							if (invoke.getResultName() != null) {
+								changed = true;
+								Service service = invoke.getService(serviceContext);
+								if (service != null) {
+									structure.add(new ComplexElementImpl(invoke.getResultName(), service.getServiceInterface().getOutputDefinition(), structure, new ValueImpl<Boolean>(HiddenProperty.getInstance(), true)), false);
+								}
+							}
 						}
 					}
+					pipeline = changed ? structure : getParent().getPipeline(serviceContext);
 				}
 			}
-			pipeline = changed ? structure : getParent().getPipeline(serviceContext);
 		}
 		return pipeline;
 	}
