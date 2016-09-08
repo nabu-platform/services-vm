@@ -10,6 +10,9 @@ import java.util.UUID;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
@@ -27,6 +30,7 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 
 	private String resultName, serviceId;
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	/**
 	 * These allow positioning of the invoke by the display
@@ -57,6 +61,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		// and as such the only one who can enforce permissions
 		Service service = getService(context.getExecutionContext().getServiceContext());
 		if (service == null) {
+			logger.error("Could not find service: " + serviceId);
 			throw new ServiceException("VM-3", "Could not find service: " + serviceId);
 		}
 		ComplexContent input = service.getServiceInterface().getInputDefinition().newInstance();
