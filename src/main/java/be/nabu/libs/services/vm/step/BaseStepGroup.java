@@ -71,11 +71,16 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 				ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
 			}
 		}
-		catch (ServiceException e) {
+		catch (Exception e) {
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().error(child, e);
 			}
-			throw e;
+			if (e instanceof ServiceException) {
+				throw (ServiceException) e;
+			}
+			else {
+				throw new ServiceException("VM-6", child.getClass().getSimpleName() + ": " + child.getId(), e);
+			}
 		}
 	}
 	
