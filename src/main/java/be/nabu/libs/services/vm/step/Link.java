@@ -109,14 +109,16 @@ public class Link extends BaseStep {
 					}
 					value = newCollection;
 				}
-				if (!(value instanceof ComplexContent)) {
-					ComplexContent wrapped = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(value);
-					if (wrapped == null) {
-						throw new ServiceException("VM-8", "Can not convert the original to complex content for type masking");
+				else {
+					if (!(value instanceof ComplexContent)) {
+						ComplexContent wrapped = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(value);
+						if (wrapped == null) {
+							throw new ServiceException("VM-8", "Can not convert the original to complex content for type masking");
+						}
+						value = wrapped;
 					}
-					value = wrapped;
+					value = new MaskedContent((ComplexContent) value, (ComplexType) returnType);
 				}
-				value = new MaskedContent((ComplexContent) value, (ComplexType) returnType);
 			}
 			catch (ParseException e) {
 				e.printStackTrace();
