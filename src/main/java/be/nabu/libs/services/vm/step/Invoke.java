@@ -4,8 +4,10 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Future;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
@@ -13,16 +15,22 @@ import javax.xml.bind.annotation.XmlTransient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.services.CombinedServiceRunner.CombinedServiceResult;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.NamedServiceRunner;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
+import be.nabu.libs.services.api.ServiceResult;
+import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.vm.ManagedCloseable;
 import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.services.vm.ManagedCloseable.Scope;
+import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.types.api.ComplexContent;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -43,6 +51,10 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	private boolean temporaryMapping = true;
 	
 	private int invocationOrder = 0;
+	
+	private String target;
+	
+	private boolean asynchronous = false;
 	
 	private List<ManagedCloseable> managedCloseables = new ArrayList<ManagedCloseable>();
 
@@ -70,12 +82,68 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			Link link = (Link) child;
 			link.execute(context.getServiceInstance().getCurrentPipeline(), input);
 		}
-		// execute the service and map the result
-		ComplexContent result = new ServiceRuntime(service, context.getExecutionContext()).run(input);
 		
+		ExecutorProvider executor = context.getServiceInstance().getDefinition().getExecutorProvider();
+		// execute the service and map the result
+		ComplexContent result;
+		if (executor == null) {
+			if (asynchronous) {
+				new Thread(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							new ServiceRuntime(service, context.getExecutionContext()).run(input);
+						}
+						catch (ServiceException e) {
+							logger.error("Asynchronous execution exception occurred", e);
+						}
+					}
+				}).start();
+				result = null;
+			}
+			else {
+				result = new ServiceRuntime(service, context.getExecutionContext()).run(input);
+			}
+		}
+		else {
+			ServiceRunner runner = executor.getRunner(target);
+			if (runner == null) {
+				throw new ServiceException("VM-9", "Invalid target environment: " + target);
+			}
+			Future<ServiceResult> run = runner.run(service, context.getExecutionContext(), input);
+			if (!asynchronous) {
+				try {
+					ServiceResult serviceResult = run.get();
+					if (serviceResult.getException() != null) {
+						throw serviceResult.getException();
+					}
+					if (serviceResult instanceof CombinedServiceResult && getResultName() != null) {
+						Map<ServiceRunner, ServiceResult> results = ((CombinedServiceResult) serviceResult).getResults();
+						result = ((ComplexType) getPipeline(context.getExecutionContext().getServiceContext()).get(getResultName()).getType()).newInstance();
+						int index = 0;
+						for (ServiceRunner serviceRunner : results.keySet()) {
+							 String name = serviceRunner instanceof NamedServiceRunner ? ((NamedServiceRunner) serviceRunner).getName() : null;
+							 ComplexContent resultInstance = ((ComplexType) result.getType().get("results").getType()).newInstance();
+							 resultInstance.set("name", name);
+							 resultInstance.set("output", results.get(serviceRunner).getOutput());
+							 result.set("results[" + index++ + "]", resultInstance);
+						}
+					}
+					else {
+						result = serviceResult.getOutput();
+					}
+				}
+				catch (Exception e) {
+					throw new ServiceException("VM-10", "Remote execution error", e);
+				}
+			}
+			else {
+				result = null;
+			}
+		}
 		// only map the result if you have set a name
 		// note that you can only manage closeable objects if you map the result to the pipeline
-		if (resultName != null) {
+		if (resultName != null && result != null) {
 			setVariable(context.getServiceInstance().getCurrentPipeline(), resultName, result);
 			// map the necessary closeables to the necessary scope handlers
 			for (ManagedCloseable closeable : managedCloseables) {
@@ -177,5 +245,21 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	@Override
 	public void refresh() {
 		// do nothing
+	}
+
+	public String getTarget() {
+		return target;
+	}
+
+	public void setTarget(String target) {
+		this.target = target;
+	}
+
+	public boolean isAsynchronous() {
+		return asynchronous;
+	}
+
+	public void setAsynchronous(boolean asynchronous) {
+		this.asynchronous = asynchronous;
 	}
 }

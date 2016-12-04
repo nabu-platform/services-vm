@@ -15,4 +15,8 @@ public interface VMService extends DefinedService {
 	 * However, if you are using java beans as your backend, you must follow those rules
 	 */
 	public boolean isMappable(TypeInstance fromItem, TypeInstance toItem);
+	
+	default ExecutorProvider getExecutorProvider() {
+		return null;
+	}
 }

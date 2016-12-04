@@ -18,6 +18,7 @@ import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.ManagedCloseable.Scope;
 import be.nabu.libs.services.vm.PipelineExtension;
 import be.nabu.libs.services.vm.VMContext;
+import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.ComplexType;
@@ -147,7 +148,14 @@ public class Map extends BaseStepGroup implements LimitedStepGroup {
 								changed = true;
 								Service service = invoke.getService(serviceContext);
 								if (service != null) {
-									structure.add(new ComplexElementImpl(invoke.getResultName(), service.getServiceInterface().getOutputDefinition(), structure, new ValueImpl<Boolean>(HiddenProperty.getInstance(), true)), false);
+									boolean isBatch = getServiceDefinition().getExecutorProvider() != null && getServiceDefinition().getExecutorProvider().isBatch(invoke.getTarget());
+									structure.add(new ComplexElementImpl(
+										invoke.getResultName(), 
+										isBatch ? ExecutorProvider.getBatchOutput(service) : service.getServiceInterface().getOutputDefinition(), 
+										structure, 
+										new ValueImpl<Boolean>(HiddenProperty.getInstance(), true)), 
+										false
+									);
 								}
 							}
 						}

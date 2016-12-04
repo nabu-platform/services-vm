@@ -9,6 +9,7 @@ import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
+import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.BaseTypeInstance;
@@ -28,6 +29,7 @@ public class SimpleVMServiceDefinition implements VMService {
 	private Sequence root;
 	private Pipeline pipeline;
 	private ServiceInterface serviceInterface;
+	private ExecutorProvider executorProvider;
 	
 	private String id;
 	private TypeConverter typeConverter;
@@ -168,6 +170,14 @@ public class SimpleVMServiceDefinition implements VMService {
 			pipeline = new Pipeline(this);
 		}
 		return pipeline;
+	}
+
+	public ExecutorProvider getExecutorProvider() {
+		return executorProvider;
+	}
+
+	public void setExecutorProvider(ExecutorProvider executorProvider) {
+		this.executorProvider = executorProvider;
 	}
 
 }
