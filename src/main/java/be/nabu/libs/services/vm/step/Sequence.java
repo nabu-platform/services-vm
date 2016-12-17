@@ -7,6 +7,8 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
+import org.slf4j.LoggerFactory;
+
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
@@ -35,6 +37,8 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	private String transactionVariable, step;
 
 	private SimpleTypeWrapper simpleTypeWrapper;
+	
+	private static Boolean LOG_ERRORS = Boolean.parseBoolean(System.getProperty("be.nabu.libs.services.vm.logErrors", "true"));
 	
 	public Sequence(VMService definition, Step...steps) {
 		super(definition, steps);
@@ -133,6 +137,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					context.setCaughtException(e);
 					execute(defaultCatchClause, context);
 					context.setCaughtException(null);
+					if (LOG_ERRORS) {
+						LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
+					}
 				}
 				else if (e instanceof ServiceException)
 					throw (ServiceException) e;
