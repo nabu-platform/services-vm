@@ -148,6 +148,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 				else
 					throw new ServiceException(e);
 			}
+			else if (LOG_ERRORS) {
+				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
+			}
 		}
 		finally {
 			boolean lastExecutedFound = false;
