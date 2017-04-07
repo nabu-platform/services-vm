@@ -99,7 +99,7 @@ public class Link extends BaseStep {
 					for (Object index : indexes) {
 						Object single = collectionHandler.get(value, index);
 						if (!(single instanceof ComplexContent)) {
-							ComplexContent wrapped = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(value);
+							ComplexContent wrapped = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(single);
 							if (wrapped == null) {
 								throw new ServiceException("VM-8", "Can not convert the original to complex content for type masking");
 							}
