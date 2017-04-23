@@ -25,6 +25,10 @@ public interface Step {
 	public String getComment();
 	public void setComment(String comment);
 	
+	@XmlAttribute
+	public String getName();
+	public void setName(String name);
+	
 	@XmlTransient
 	public VMService getServiceDefinition();
 	

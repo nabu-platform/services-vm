@@ -34,7 +34,7 @@ import be.nabu.libs.types.properties.CommentProperty;
 public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
-	private String transactionVariable, step;
+	private String transactionVariable;
 
 	private SimpleTypeWrapper simpleTypeWrapper;
 	
@@ -59,15 +59,17 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			transactionId = context.getExecutionContext().getTransactionContext().start();
 			setVariable(context.getServiceInstance().getCurrentPipeline(), transactionVariable, transactionId);
 		}
-		if (step != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
-			ServiceRuntime.getRuntime().getRuntimeTracker().before(step);
-		}
 		Step lastExecuted = null;
+		Step currentChild = null;
 		try {
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {
 					continue;
 				}
+				if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+					ServiceRuntime.getRuntime().getRuntimeTracker().before(child);
+				}
+				currentChild = child;
 				if (!(child instanceof Catch) && !(child instanceof Finally)) {
 					lastExecuted = child;
 					execute(child, context);
@@ -75,6 +77,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 						context.decreaseBreakCount();
 						break;
 					}
+				}
+				if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+					ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
 				}
 				if (isAborted()) {
 					break;
@@ -88,17 +93,14 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					context.getExecutionContext().getTransactionContext().commit(transactionId);
 				}
 			}
-			if (step != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
-				ServiceRuntime.getRuntime().getRuntimeTracker().after(step);
-			}
 		}
 		catch (Exception e) {
 			// roll back pending transaction if any
 			if (transactionId != null) {
 				context.getExecutionContext().getTransactionContext().rollback(transactionId);
 			}
-			if (step != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
-				ServiceRuntime.getRuntime().getRuntimeTracker().error(step, e);
+			if (currentChild != null && currentChild.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				ServiceRuntime.getRuntime().getRuntimeTracker().error(currentChild, e);
 			}
 			boolean matchFound = false;
 			Catch defaultCatchClause = null;
@@ -122,8 +124,14 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 							if (exceptionType.isAssignableFrom(e.getClass())) {
 								matchFound = true;
 								context.setCaughtException(e);
+								if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+									ServiceRuntime.getRuntime().getRuntimeTracker().before(child);
+								}
 								execute(catchClause, context);
 								context.setCaughtException(null);
+								if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+									ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
+								}
 								break;
 							}
 						}
@@ -135,8 +143,14 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			if (!matchFound) { 
 				if (defaultCatchClause != null) {
 					context.setCaughtException(e);
+					if (defaultCatchClause.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+						ServiceRuntime.getRuntime().getRuntimeTracker().before(defaultCatchClause);
+					}
 					execute(defaultCatchClause, context);
 					context.setCaughtException(null);
+					if (defaultCatchClause.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+						ServiceRuntime.getRuntime().getRuntimeTracker().after(defaultCatchClause);
+					}
 					if (LOG_ERRORS) {
 						LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
 					}
@@ -165,7 +179,13 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					continue;
 				}
 				else if (child instanceof Finally) {
+					if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+						ServiceRuntime.getRuntime().getRuntimeTracker().before(child);
+					}
 					execute(child, context);
+					if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+						ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
+					}
 					break;
 				}
 			}
@@ -224,14 +244,6 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	}
 	public void setTransactionVariable(String transactionVariable) {
 		this.transactionVariable = transactionVariable;
-	}
-	
-	@XmlAttribute
-	public String getStep() {
-		return step;
-	}
-	public void setStep(String step) {
-		this.step = step;
 	}
 	
 	@XmlTransient

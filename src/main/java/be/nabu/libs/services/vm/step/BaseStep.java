@@ -41,7 +41,7 @@ abstract public class BaseStep implements Step {
 	 */
 	private Map<String, TypeOperation> analyzedOperations = new HashMap<String, TypeOperation>();
 	
-	private String comment;
+	private String comment, name;
 	
 	private String id;
 	
@@ -249,4 +249,16 @@ abstract public class BaseStep implements Step {
 	public String toString() {
 		return getContext();
 	}
+
+	@XmlAttribute
+	@Override
+	public String getName() {
+		return name;
+	}
+	@Override
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	
 }
