@@ -63,16 +63,16 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 	
 	protected void execute(Step child, VMContext context) throws ServiceException {
 		try {
-			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+			if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().before(child);
 			}
 			child.execute(context);
-			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+			if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
 			}
 		}
 		catch (Exception e) {
-			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+			if (child.getName() != null && ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().error(child, e);
 			}
 			if (e instanceof ServiceException) {

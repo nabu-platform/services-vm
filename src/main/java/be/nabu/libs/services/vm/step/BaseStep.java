@@ -247,7 +247,7 @@ abstract public class BaseStep implements Step {
 	
 	@Override
 	public String toString() {
-		return getContext();
+		return name == null ? getContext() : name;
 	}
 
 	@XmlAttribute
