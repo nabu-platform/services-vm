@@ -43,7 +43,7 @@ public class Switch extends BaseStepGroup implements LimitedStepGroup {
 				break;
 			}
 			else {
-				Object result = getVariable(context.getServiceInstance().getCurrentPipeline(), child.getLabel());
+				Object result = getVariable(context.getServiceInstance().getPipeline(), child.getLabel());
 				if (toMatch != null && result != null) {
 					Object converted = ConverterFactory.getInstance().getConverter().convert(result, toMatch.getClass());
 					if (converted == null) {
@@ -75,7 +75,7 @@ public class Switch extends BaseStepGroup implements LimitedStepGroup {
 		if (query == null)
 			return true;
 		else
-			return getVariable(context.getServiceInstance().getCurrentPipeline(), query);
+			return getVariable(context.getServiceInstance().getPipeline(), query);
 	}
 	
 	@XmlAttribute

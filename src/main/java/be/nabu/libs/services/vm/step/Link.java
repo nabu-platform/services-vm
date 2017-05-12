@@ -54,7 +54,7 @@ public class Link extends BaseStep {
 	 */
 	@Override
 	public void execute(VMContext context) throws ServiceException {
-		execute(context.getServiceInstance().getCurrentPipeline(), context.getServiceInstance().getCurrentPipeline());
+		execute(context.getServiceInstance().getPipeline(), context.getServiceInstance().getPipeline());
 	}
 	
 	/**

@@ -125,7 +125,7 @@ public class Catch extends BaseStepGroup implements LimitedStepGroup {
 	public void execute(VMContext context) throws ServiceException {
 		if (variable != null) {
 			context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-			setVariable(context.getServiceInstance().getCurrentPipeline(), variable, context.getCaughtException());
+			setVariable(context.getServiceInstance().getPipeline(), variable, context.getCaughtException());
 		}
 		for (Step child : getChildren()) {
 			if (child.isDisabled()) {

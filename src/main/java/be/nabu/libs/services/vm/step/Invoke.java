@@ -80,7 +80,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		// now map all the inputs
 		for (Step child : getChildren()) {
 			Link link = (Link) child;
-			link.execute(context.getServiceInstance().getCurrentPipeline(), input);
+			link.execute(context.getServiceInstance().getPipeline(), input);
 		}
 		
 		ExecutorProvider executor = context.getServiceInstance().getDefinition().getExecutorProvider();
@@ -144,10 +144,10 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		// only map the result if you have set a name
 		// note that you can only manage closeable objects if you map the result to the pipeline
 		if (resultName != null && result != null) {
-			setVariable(context.getServiceInstance().getCurrentPipeline(), resultName, result);
+			setVariable(context.getServiceInstance().getPipeline(), resultName, result);
 			// map the necessary closeables to the necessary scope handlers
 			for (ManagedCloseable closeable : managedCloseables) {
-				Object object = getVariable(context.getServiceInstance().getCurrentPipeline(), resultName + "/" + closeable.getQuery());
+				Object object = getVariable(context.getServiceInstance().getPipeline(), resultName + "/" + closeable.getQuery());
 				if (object instanceof Closeable)
 					context.addManaged((Closeable) object, closeable.getScope());
 				else if (object instanceof List)

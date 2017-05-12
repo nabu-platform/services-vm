@@ -42,7 +42,7 @@ public class Throw extends BaseStep {
 		Object codeValue = null;
 		if (message != null) {
 			if (message.startsWith("=")) {
-				messageValue = getVariable(context.getServiceInstance().getCurrentPipeline(), message.substring(1));
+				messageValue = getVariable(context.getServiceInstance().getPipeline(), message.substring(1));
 			}
 			else {
 				messageValue = message;
@@ -50,7 +50,7 @@ public class Throw extends BaseStep {
 		}
 		if (code != null) {
 			if (code.startsWith("=")) {
-				codeValue = getVariable(context.getServiceInstance().getCurrentPipeline(), code.substring(1));
+				codeValue = getVariable(context.getServiceInstance().getPipeline(), code.substring(1));
 			}
 			else {
 				codeValue = code;

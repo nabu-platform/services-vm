@@ -56,7 +56,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 		String transactionId = null;
 		if (transactionVariable != null) {
 			transactionId = context.getExecutionContext().getTransactionContext().start();
-			setVariable(context.getServiceInstance().getCurrentPipeline(), transactionVariable, transactionId);
+			setVariable(context.getServiceInstance().getPipeline(), transactionVariable, transactionId);
 		}
 		Step lastExecuted = null;
 		try {

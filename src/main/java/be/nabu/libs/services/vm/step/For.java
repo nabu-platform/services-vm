@@ -56,7 +56,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public void execute(VMContext context) throws ServiceException {
-		Object value = getVariable(context.getServiceInstance().getCurrentPipeline(), getQuery());
+		Object value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
 		if (value != null) {
 			if (value instanceof Number) {
 				List<Long> values = new ArrayList<Long>();
@@ -79,10 +79,10 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	
 				// now set the variables (if applicable)
 				if (indexName != null) {
-					setVariable(context.getServiceInstance().getCurrentPipeline(), indexName, index);
+					setVariable(context.getServiceInstance().getPipeline(), indexName, index);
 				}
 				if (variable != null) {
-					setVariable(context.getServiceInstance().getCurrentPipeline(), variable, collectionHandler.get(value, index));
+					setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
 				}
 				for (Step child : getChildren()) {
 					if (child.isDisabled()) {

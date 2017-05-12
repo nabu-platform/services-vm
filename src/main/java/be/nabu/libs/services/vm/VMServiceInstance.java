@@ -5,8 +5,8 @@ import java.util.List;
 
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.services.api.ServiceException;
-import be.nabu.libs.services.api.ServiceInstance;
 import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ServiceInstanceWithPipeline;
 import be.nabu.libs.services.vm.ManagedCloseable.Scope;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.types.api.ComplexContent;
@@ -17,7 +17,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.Validator;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-public class VMServiceInstance implements ServiceInstance {
+public class VMServiceInstance implements ServiceInstanceWithPipeline {
 	
 	private VMService definition;
 	
@@ -86,15 +86,17 @@ public class VMServiceInstance implements ServiceInstance {
 		return definition;
 	}
 	
-	public ComplexContent getCurrentPipeline() {
+	@Override
+	public ComplexContent getPipeline() {
 		return pipeline;
 	}
 	
 	public void castPipeline(ComplexType to) {
-		ComplexContent castPipeline = Structure.cast(getCurrentPipeline(), to);
+		ComplexContent castPipeline = Structure.cast(getPipeline(), to);
 		if (castPipeline == null)
 			throw new ClassCastException("Can not cast the pipeline from " + pipeline.getType() + " to " + to);
 		else
 			pipeline = castPipeline;
 	}
+	
 }
