@@ -58,37 +58,45 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	public void execute(VMContext context) throws ServiceException {
 		Object value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
 		if (value != null) {
-			if (value instanceof Number) {
-				List<Long> values = new ArrayList<Long>();
-				for (long i = 0; i < ((Number) value).longValue(); i++) {
-					values.add(i);
-				}
-				value = values;
-			}
-			CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
-			if (collectionHandler == null) {
-				throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
-			}
-			for (Object index : collectionHandler.getIndexes(value)) {
-				// cast the pipeline to the proper definition
-				// if the pipeline belongs to the parent, an additional local wrapper will be added
-				// if the pipeline belongs to this guy, it is unchanged
-				// if the pipeline belongs to a child scope, the additional parameters are unwrapped
-				// this means anything in this scope (NOT a child scope) is retained
-				context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-	
-				// now set the variables (if applicable)
-				if (indexName != null) {
-					setVariable(context.getServiceInstance().getPipeline(), indexName, index);
-				}
-				if (variable != null) {
-					setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
-				}
-				for (Step child : getChildren()) {
-					if (child.isDisabled()) {
-						continue;
+			
+			// if we have a boolean, we execute until it is not true
+			if (value instanceof Boolean) {
+				long index = 0;
+				while (value instanceof Boolean && (Boolean) value) {
+					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+					
+					// now set the variables (if applicable)
+					if (indexName != null) {
+						setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
 					}
-					execute(child, context);
+					if (variable != null) {
+						setVariable(context.getServiceInstance().getPipeline(), variable, value);
+					}
+					executeSteps(context);
+					// check break count
+					if (context.mustBreak()) {
+						context.decreaseBreakCount();
+						break;
+					}
+					else if (isAborted()) {
+						break;
+					}
+					// evaluate it again
+					value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
+				}
+			}
+			else if (value instanceof Number) {
+				for (long i = 0; i < ((Number) value).longValue(); i++) {
+					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+					
+					// now set the variables (if applicable)
+					if (indexName != null) {
+						setVariable(context.getServiceInstance().getPipeline(), indexName, i);
+					}
+					if (variable != null) {
+						setVariable(context.getServiceInstance().getPipeline(), variable, i);
+					}
+					executeSteps(context);
 					// check break count
 					if (context.mustBreak()) {
 						context.decreaseBreakCount();
@@ -98,6 +106,75 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						break;
 					}
 				}
+			}
+			else if (value instanceof Iterable) {
+				long index = 0;
+				for (Object single : (Iterable) value) {
+					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+					
+					if (indexName != null) {
+						setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
+					}
+					if (variable != null) {
+						setVariable(context.getServiceInstance().getPipeline(), variable, single);
+					}
+					executeSteps(context);
+					// check break count
+					if (context.mustBreak()) {
+						context.decreaseBreakCount();
+						break;
+					}
+					else if (isAborted()) {
+						break;
+					}
+				}
+			}
+			else {
+				CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
+				if (collectionHandler == null) {
+					throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
+				}
+				for (Object index : collectionHandler.getIndexes(value)) {
+					// cast the pipeline to the proper definition
+					// if the pipeline belongs to the parent, an additional local wrapper will be added
+					// if the pipeline belongs to this guy, it is unchanged
+					// if the pipeline belongs to a child scope, the additional parameters are unwrapped
+					// this means anything in this scope (NOT a child scope) is retained
+					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+		
+					// now set the variables (if applicable)
+					if (indexName != null) {
+						setVariable(context.getServiceInstance().getPipeline(), indexName, index);
+					}
+					if (variable != null) {
+						setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
+					}
+					executeSteps(context);
+					// check break count
+					if (context.mustBreak()) {
+						context.decreaseBreakCount();
+						break;
+					}
+					else if (isAborted()) {
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	private void executeSteps(VMContext context) throws ServiceException {
+		for (Step child : getChildren()) {
+			if (child.isDisabled()) {
+				continue;
+			}
+			execute(child, context);
+			// check break count
+			if (context.mustBreak()) {
+				break;
+			}
+			else if (isAborted()) {
+				break;
 			}
 		}
 	}
@@ -154,7 +231,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 								CollectionHandlerProvider<?, ?> collectionHandler = operation.getReturnCollectionHandler(parentPipeline);
 								Class<?> indexType = collectionHandler == null ? null : collectionHandler.getIndexClass();
 								if (indexType == null) {
-									indexType = Object.class;
+									indexType = Long.class;
 								}
 								DefinedSimpleType<?> wrapped = SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(indexType);
 								if (wrapped != null) {
