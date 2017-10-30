@@ -99,6 +99,7 @@ abstract public class BaseStep implements Step {
 		}
 	}
 	public void setVariable(ComplexContent pipeline, String query, Object value) throws ServiceException {
+		VariableOperation.registerRoot();
 		try {
 			TypeOperation operation = getOperation(query);
 			if (!(operation instanceof TypeVariableOperation))
@@ -111,7 +112,10 @@ abstract public class BaseStep implements Step {
 		}
 		catch (ParseException e) {
 			throw new ServiceException(e);
-		}		
+		}
+		finally {
+			VariableOperation.unregisterRoot();
+		}
 	}
 	
 	protected TypeOperation getOperation(String query) throws ParseException {

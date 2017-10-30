@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import be.nabu.libs.converter.ConverterFactory;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
@@ -59,6 +60,22 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 			messages.addAll(addContext(child.validate(serviceContext)));
 		}
 		return messages;
+	}
+	
+	protected boolean executeIfLabel(Step child, VMContext context) throws ServiceException {
+		Boolean execute = true;
+		if (child.getLabel() != null) {
+			Object variable = getVariable(context.getServiceInstance().getPipeline(), child.getLabel());
+			execute = variable != null ? ConverterFactory.getInstance().getConverter().convert(variable, Boolean.class) : false;
+			// if we can not convert the variable to a boolean, we execute if it is not null, we checked for null in the above so always true at this point
+			if (execute == null) {
+				execute = true;
+			}
+		}
+		if (execute) {
+			execute(child, context);
+		}
+		return execute;
 	}
 	
 	protected void execute(Step child, VMContext context) throws ServiceException {

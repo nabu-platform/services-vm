@@ -182,6 +182,10 @@ public class Link extends BaseStep {
 		else if (from.startsWith("=")) {
 			messages.addAll(validateQuery(serviceContext, from.substring(1)));
 		}
+		// a fixed value without leading "=" is just a string, don't validate
+		else if (!isFixedValue()) {
+			messages.addAll(validateQuery(serviceContext, from));
+		}
 		if (to == null) {
 			messages.add(addContext(new ValidationMessage(Severity.ERROR, "No to is defined")));
 		}

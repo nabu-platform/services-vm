@@ -65,8 +65,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					continue;
 				}
 				if (!(child instanceof Catch) && !(child instanceof Finally)) {
-					lastExecuted = child;
-					execute(child, context);
+					if (executeIfLabel(child, context)) {
+						lastExecuted = child;
+					}
 					if (context.mustBreak()) {
 						context.decreaseBreakCount();
 						break;
@@ -112,7 +113,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 							if (exceptionType.isAssignableFrom(e.getClass())) {
 								matchFound = true;
 								context.setCaughtException(e);
-								execute(catchClause, context);
+								executeIfLabel(catchClause, context);
 								context.setCaughtException(null);
 								break;
 							}
@@ -125,7 +126,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			if (!matchFound) { 
 				if (defaultCatchClause != null) {
 					context.setCaughtException(e);
-					execute(defaultCatchClause, context);
+					executeIfLabel(defaultCatchClause, context);
 					context.setCaughtException(null);
 					if (LOG_ERRORS) {
 						LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
@@ -155,7 +156,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					continue;
 				}
 				else if (child instanceof Finally) {
-					execute(child, context);
+					executeIfLabel(child, context);
 					break;
 				}
 			}

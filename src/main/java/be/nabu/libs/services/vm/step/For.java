@@ -168,7 +168,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 			if (child.isDisabled()) {
 				continue;
 			}
-			execute(child, context);
+			executeIfLabel(child, context);
 			// check break count
 			if (context.mustBreak()) {
 				break;
@@ -306,6 +306,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 		allowed.add(Map.class);
 		allowed.add(Throw.class);
 		allowed.add(Sequence.class);
+		allowed.add(Break.class);
 		return allowed;
 	}
 

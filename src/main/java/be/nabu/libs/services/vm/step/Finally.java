@@ -24,7 +24,7 @@ public class Finally extends BaseStepGroup implements LimitedStepGroup {
 			if (child.isDisabled()) {
 				continue;
 			}
-			execute(child, context);
+			executeIfLabel(child, context);
 			if (isAborted()) {
 				break;
 			}

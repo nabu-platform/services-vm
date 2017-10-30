@@ -47,7 +47,13 @@ public class Switch extends BaseStepGroup implements LimitedStepGroup {
 				if (toMatch != null && result != null) {
 					Object converted = ConverterFactory.getInstance().getConverter().convert(result, toMatch.getClass());
 					if (converted == null) {
-						throw new IllegalArgumentException("Can not convert the result '" + result + "' of the label to the type of the switch variable: " + toMatch.getClass());
+						// if we can't directly convert it to boolean, we assume null to be false and not null to be true
+						if (Boolean.class.isAssignableFrom(toMatch.getClass())) {
+							converted = result != null;
+						}
+						else {
+							throw new IllegalArgumentException("Can not convert the result '" + result + "' of the label to the type of the switch variable: " + toMatch.getClass());
+						}
 					}
 					result = converted;
 				}
