@@ -81,6 +81,7 @@ abstract public class BaseStep implements Step {
 	@Override
 	public void setParent(StepGroup parent) {
 		this.parent = parent;
+		this.parent.refresh();
 	}
 	
 	public Object getVariable(ComplexContent pipeline, String query) throws ServiceException {
