@@ -6,6 +6,7 @@ import java.util.Set;
 import javax.xml.bind.annotation.XmlTransient;
 
 import be.nabu.libs.property.ValueUtils;
+import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
@@ -15,13 +16,16 @@ import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.BaseTypeInstance;
 import be.nabu.libs.types.TypeConverterFactory;
 import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.CollectionHandlerProvider;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.api.TypeConverter;
 import be.nabu.libs.types.api.TypeInstance;
+import be.nabu.libs.types.base.StringMapCollectionHandlerProvider;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.types.properties.AspectProperty;
+import be.nabu.libs.types.properties.CollectionHandlerProviderProperty;
 
 public class SimpleVMServiceDefinition implements VMService {
 
@@ -79,7 +83,15 @@ public class SimpleVMServiceDefinition implements VMService {
 	 * The mapping engine should also take into account that you can't actually cast e.g. java objects etc
 	 * If a cast is necessary, it should contemplate generating structures to fix it
 	 */
+	@SuppressWarnings("rawtypes")
 	public boolean isMappable(TypeInstance fromItem, TypeInstance toItem) {
+		// if both items are a java.util.Map, we can map it immediately
+		Value<CollectionHandlerProvider> fromProperty = fromItem.getProperty(CollectionHandlerProviderProperty.getInstance());
+		Value<CollectionHandlerProvider> toProperty = toItem.getProperty(CollectionHandlerProviderProperty.getInstance());
+		if (fromProperty != null && fromProperty.getValue() instanceof StringMapCollectionHandlerProvider && toProperty != null && toProperty.getValue() instanceof StringMapCollectionHandlerProvider) {
+			return true;
+		}
+		
 		// if the target item is an aspect, check if the source item is a subset
 		// no casting will be done as the target is merely an aspect, it expects a data interface
 		if (ValueUtils.getValue(new AspectProperty(), toItem.getProperties()))

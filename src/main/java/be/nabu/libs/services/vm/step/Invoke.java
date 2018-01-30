@@ -2,7 +2,9 @@ package be.nabu.libs.services.vm.step;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,7 +12,12 @@ import java.util.UUID;
 import java.util.concurrent.Future;
 
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlValue;
+import javax.xml.bind.annotation.adapters.XmlAdapter;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import be.nabu.libs.services.CombinedServiceRunner.CombinedServiceResult;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ForkableExecutionContext;
 import be.nabu.libs.services.api.NamedServiceRunner;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceContext;
@@ -31,6 +40,7 @@ import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.KeyValuePair;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -57,6 +67,8 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	private boolean asynchronous = false;
 	
 	private List<ManagedCloseable> managedCloseables = new ArrayList<ManagedCloseable>();
+	
+	private Map<String, String> targetProperties;
 
 	public Invoke() {
 		
@@ -88,11 +100,16 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		ComplexContent result;
 		if (executor == null) {
 			if (asynchronous) {
+				// fork the execution context if possible, we don't want to asynchronously share an execution context
+				// this could lead to failed transactions etc
+				final ExecutionContext executionContext = context.getExecutionContext() instanceof ForkableExecutionContext
+					? ((ForkableExecutionContext) context.getExecutionContext()).fork()
+					: context.getExecutionContext();
 				new Thread(new Runnable() {
 					@Override
 					public void run() {
 						try {
-							new ServiceRuntime(service, context.getExecutionContext()).run(input);
+							new ServiceRuntime(service, executionContext).run(input);
 						}
 						catch (ServiceException e) {
 							logger.error("Asynchronous execution exception occurred", e);
@@ -106,12 +123,32 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		else {
-			ServiceRunner runner = executor.getRunner(target);
+			String target = this.target;
+			if (target != null && target.startsWith("=")) {
+				target = (String) getVariable(context.getServiceInstance().getPipeline(), target.substring(1));
+			}
+			Map<String, Object> targetProperties = new HashMap<String, Object>();
+			if (this.targetProperties != null) {
+				for (String key : this.targetProperties.keySet()) {
+					Object value = this.targetProperties.get(key);
+					if (value != null && ((String) value).startsWith("=")) {
+						value = getVariable(context.getServiceInstance().getPipeline(), ((String) value).substring(1));
+					}
+					targetProperties.put(key, value);
+				}
+			}
+			ServiceRunner runner = executor.getRunner(target, targetProperties);
 			if (runner == null) {
 				throw new ServiceException("VM-9", "Invalid target environment: " + target);
 			}
-			Future<ServiceResult> run = runner.run(service, context.getExecutionContext(), input);
-			if (!asynchronous) {
+			ExecutionContext executionContext = context.getExecutionContext();
+			// fork the execution context if possible, we don't want to asynchronously share an execution context
+			// this could lead to failed transactions etc
+			if (asynchronous && executionContext instanceof ForkableExecutionContext) {
+				executionContext = ((ForkableExecutionContext) executionContext).fork();
+			}
+			Future<ServiceResult> run = runner.run(service, executionContext, input);
+			if (!asynchronous && run != null) {
 				try {
 					ServiceResult serviceResult = run.get();
 					if (serviceResult.getException() != null) {
@@ -215,6 +252,17 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		if (getService(serviceContext) == null) {
 			messages.add(addContext(new ValidationMessage(Severity.ERROR, "Could not find service: " + serviceId)));
 		}
+		if (target != null && target.startsWith("=")) {
+			messages.addAll(validateQuery(serviceContext, target.substring(1)));
+		}
+		if (targetProperties != null) {
+			for (String key : targetProperties.keySet()) {
+				String value = targetProperties.get(key);
+				if (value != null && value.startsWith("=")) {
+					messages.addAll(validateQuery(serviceContext, value.substring(1)));		
+				}
+			}
+		}
 		return messages;
 	}
 
@@ -262,4 +310,88 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	public void setAsynchronous(boolean asynchronous) {
 		this.asynchronous = asynchronous;
 	}
+
+	
+	
+	
+	//--------------------- key value pairs
+	
+	@XmlJavaTypeAdapter(value = KeyValueMapAdapter.class)
+	public Map<String, String> getTargetProperties() {
+		return targetProperties;
+	}
+	public void setTargetProperties(Map<String, String> targetProperties) {
+		this.targetProperties = targetProperties;
+	}
+
+	@XmlRootElement(name = "property")
+	public static class KeyValuePairImpl implements KeyValuePair {
+		private String key, value;
+
+		public KeyValuePairImpl(String key, String value) {
+			this.key = key;
+			this.value = value;
+		}
+		public KeyValuePairImpl() {
+			// auto construction
+		}
+
+		@XmlAttribute
+		public String getKey() {
+			return key;
+		}
+
+		public void setKey(String key) {
+			this.key = key;
+		}
+
+		@XmlValue
+		public String getValue() {
+			return value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+	}
+	public static class KeyValueMapAdapter extends XmlAdapter<KeyValueMapAdapter.MapRoot, Map<String, String>> {
+
+		public static class MapRoot {
+			private List<KeyValuePair> properties = new ArrayList<KeyValuePair>();
+
+			@XmlElement(name = "property")
+			public List<KeyValuePair> getProperties() {
+				return properties;
+			}
+			public void setProperties(List<KeyValuePair> properties) {
+				this.properties = properties;
+			}
+		}
+		
+		@Override
+		public Map<String, String> unmarshal(MapRoot v) throws Exception {
+			Map<String, String> map = new LinkedHashMap<String, String>();
+			if (v == null) {
+				return map;
+			}
+			for (KeyValuePair pair : v.getProperties()) {
+				map.put(pair.getKey(), pair.getValue() == null || pair.getValue().trim().isEmpty() ? null : pair.getValue());
+			}
+			return map;
+		}
+
+		@Override
+		public MapRoot marshal(Map<String, String> v) throws Exception {
+			if (v == null) {
+				return null;
+			}
+			MapRoot root = new MapRoot();
+			for (String key : v.keySet()) {
+				root.getProperties().add(new KeyValuePairImpl(key, v.get(key)));
+			}
+			return root;
+		}
+
+	}
+
 }

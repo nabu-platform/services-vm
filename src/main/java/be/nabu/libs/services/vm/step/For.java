@@ -1,6 +1,5 @@
 package be.nabu.libs.services.vm.step;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -8,6 +7,9 @@ import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import be.nabu.libs.evaluator.types.api.TypeOperation;
 import be.nabu.libs.services.api.ServiceContext;
@@ -38,6 +40,8 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	private String variable, indexName, query;
 	
 	private SimpleTypeWrapper simpleTypeWrapper;
+	
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	/**
 	 * The pipeline that is built is cached in order to increase performance
@@ -241,8 +245,8 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 									pipeline.add(new ComplexElementImpl(this.indexName, (ComplexType) BeanResolver.getInstance().resolve(indexType), pipeline, new ValueImpl<Integer>(new MinInclusiveProperty<Integer>(Integer.class), 0)), false);	
 								}
 							}
-							catch (ParseException e) {
-								throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
+							catch (Exception e) {
+								logger.error("Can not determine the return type for the index of the for loop: " + query, e);
 							}
 						}
 						// now the result of the query...
@@ -257,8 +261,8 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 									: new SimpleElementImpl(variable, (SimpleType<?>) returnType, pipeline);
 								pipeline.add(element, false);
 							}
-							catch (ParseException e) {
-								throw new IllegalArgumentException("The given operation '" + query + "' is not valid", e);
+							catch (Exception e) {
+								logger.error("The value query in the for loop is invalid: " + query, e);
 							}
 						}
 						this.pipeline = pipeline;

@@ -65,9 +65,12 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					continue;
 				}
 				if (!(child instanceof Catch) && !(child instanceof Finally)) {
-					if (executeIfLabel(child, context)) {
-						lastExecuted = child;
-					}
+					// set the last executed _before_ executing it, just in case we get an exception
+					// if we did not have to execute it (because of the label), it is still ok as it currently only serves as a pointer where we approximately got in the flow
+					// so we can discard catches & finallys before it
+					// this is especially important if it is the _first_ step of the sequence that fails!
+					lastExecuted = child;
+					executeIfLabel(child, context);
 					if (context.mustBreak()) {
 						context.decreaseBreakCount();
 						break;
@@ -87,6 +90,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		catch (Exception e) {
+			if (LOG_ERRORS) {
+				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
+			}
 			// roll back pending transaction if any
 			if (transactionId != null) {
 				context.getExecutionContext().getTransactionContext().rollback(transactionId);
@@ -128,9 +134,6 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					context.setCaughtException(e);
 					executeIfLabel(defaultCatchClause, context);
 					context.setCaughtException(null);
-					if (LOG_ERRORS) {
-						LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
-					}
 				}
 				else if (e instanceof ServiceException)
 					throw (ServiceException) e;
@@ -138,9 +141,6 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					throw (RuntimeException) e;
 				else
 					throw new ServiceException(e);
-			}
-			else if (LOG_ERRORS) {
-				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
 			}
 		}
 		finally {
