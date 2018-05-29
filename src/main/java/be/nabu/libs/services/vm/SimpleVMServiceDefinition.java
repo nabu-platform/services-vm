@@ -5,6 +5,9 @@ import java.util.Set;
 
 import javax.xml.bind.annotation.XmlTransient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.DefinedServiceInterface;
@@ -18,6 +21,7 @@ import be.nabu.libs.types.TypeConverterFactory;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.CollectionHandlerProvider;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.api.TypeConverter;
 import be.nabu.libs.types.api.TypeInstance;
@@ -37,6 +41,7 @@ public class SimpleVMServiceDefinition implements VMService {
 	
 	private String id;
 	private TypeConverter typeConverter;
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	/**
 	 * Whether or not to allow this:
@@ -106,6 +111,24 @@ public class SimpleVMServiceDefinition implements VMService {
 	public boolean isMappable(Type fromType, Type toType) {
 		// see if you can cast the origin type to the target type
 		boolean mappable = fromType.equals(toType) || !TypeUtils.getUpcastPath(fromType, toType).isEmpty();
+
+		// the question of isMappable() is only relevant at design time
+		// due to reloading etc, it is possible to have different instances of the same type at design time
+		// however, at runtime they are guaranteed to be the same type so we allow it
+		if (!mappable && fromType instanceof DefinedType && toType instanceof DefinedType) {
+			String fromId = ((DefinedType) fromType).getId();
+			String toId = ((DefinedType) toType).getId();
+			if (fromId == null) {
+				logger.warn("Could not get id of defined type: " + fromType);
+			}
+			else if (toId == null) {
+				logger.warn("Could not get id of defined type: " + toType);
+			}
+			else if (fromId.equals(toId)) {
+				mappable = true;
+			}
+		}
+		
 		// if the target type has no children, it's an empty one, it can hold anything, allow it
 		if (!mappable && fromType instanceof ComplexType && toType instanceof ComplexType && !TypeUtils.getAllChildrenIterator((ComplexType) toType).hasNext()) {
 			mappable = true;

@@ -138,29 +138,57 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 				if (collectionHandler == null) {
 					throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
 				}
-				for (Object index : collectionHandler.getIndexes(value)) {
-					// cast the pipeline to the proper definition
-					// if the pipeline belongs to the parent, an additional local wrapper will be added
-					// if the pipeline belongs to this guy, it is unchanged
-					// if the pipeline belongs to a child scope, the additional parameters are unwrapped
-					// this means anything in this scope (NOT a child scope) is retained
-					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-		
-					// now set the variables (if applicable)
-					if (indexName != null) {
-						setVariable(context.getServiceInstance().getPipeline(), indexName, index);
+				Class indexClass = collectionHandler.getIndexClass();
+				// if we have an integer index, we assume it is a list-like structure with an incremental index
+				// for performance reasons it is much better to get the collection as iterable and generate the index rather than get the collection of indexes and use that versus the collection
+				if (Integer.class.isAssignableFrom(indexClass)) {
+					Iterable iterable = collectionHandler.getAsIterable(value);
+					int index = 0;
+					for (Object single : iterable) {
+						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+						
+						if (indexName != null) {
+							setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
+						}
+						if (variable != null) {
+							setVariable(context.getServiceInstance().getPipeline(), variable, single);
+						}
+						executeSteps(context);
+						// check break count
+						if (context.mustBreak()) {
+							context.decreaseBreakCount();
+							break;
+						}
+						else if (isAborted()) {
+							break;
+						}
 					}
-					if (variable != null) {
-						setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
-					}
-					executeSteps(context);
-					// check break count
-					if (context.mustBreak()) {
-						context.decreaseBreakCount();
-						break;
-					}
-					else if (isAborted()) {
-						break;
+				}
+				else {
+					for (Object index : collectionHandler.getIndexes(value)) {
+						// cast the pipeline to the proper definition
+						// if the pipeline belongs to the parent, an additional local wrapper will be added
+						// if the pipeline belongs to this guy, it is unchanged
+						// if the pipeline belongs to a child scope, the additional parameters are unwrapped
+						// this means anything in this scope (NOT a child scope) is retained
+						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+			
+						// now set the variables (if applicable)
+						if (indexName != null) {
+							setVariable(context.getServiceInstance().getPipeline(), indexName, index);
+						}
+						if (variable != null) {
+							setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
+						}
+						executeSteps(context);
+						// check break count
+						if (context.mustBreak()) {
+							context.decreaseBreakCount();
+							break;
+						}
+						else if (isAborted()) {
+							break;
+						}
 					}
 				}
 			}

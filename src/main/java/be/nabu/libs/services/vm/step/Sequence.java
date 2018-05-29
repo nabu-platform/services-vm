@@ -116,12 +116,16 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 						defaultCatchClause = catchClause;
 					else {
 						for (Class<?> exceptionType : catchClause.getTypes()) {
-							if (exceptionType.isAssignableFrom(e.getClass())) {
-								matchFound = true;
-								context.setCaughtException(e);
-								executeIfLabel(catchClause, context);
-								context.setCaughtException(null);
-								break;
+							Throwable toCheck = e;
+							while (toCheck instanceof Exception) {
+								if (exceptionType.isAssignableFrom(toCheck.getClass())) {
+									matchFound = true;
+									context.setCaughtException((Exception) toCheck);
+									executeIfLabel(catchClause, context);
+									context.setCaughtException(null);
+									break;
+								}
+								toCheck = toCheck.getCause();
 							}
 						}
 					}
