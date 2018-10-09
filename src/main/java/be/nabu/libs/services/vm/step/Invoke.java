@@ -357,13 +357,13 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	public static class KeyValueMapAdapter extends XmlAdapter<KeyValueMapAdapter.MapRoot, Map<String, String>> {
 
 		public static class MapRoot {
-			private List<KeyValuePair> properties = new ArrayList<KeyValuePair>();
+			private List<KeyValuePairImpl> properties = new ArrayList<KeyValuePairImpl>();
 
 			@XmlElement(name = "property")
-			public List<KeyValuePair> getProperties() {
+			public List<KeyValuePairImpl> getProperties() {
 				return properties;
 			}
-			public void setProperties(List<KeyValuePair> properties) {
+			public void setProperties(List<KeyValuePairImpl> properties) {
 				this.properties = properties;
 			}
 		}

@@ -17,6 +17,7 @@ import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.PipelineExtension;
 import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.types.BaseTypeInstance;
 import be.nabu.libs.types.CollectionHandlerFactory;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
 import be.nabu.libs.types.api.CollectionHandlerProvider;
@@ -30,6 +31,7 @@ import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.base.SimpleElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.java.BeanResolver;
+import be.nabu.libs.types.properties.MaxOccursProperty;
 import be.nabu.libs.types.properties.MinInclusiveProperty;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
@@ -284,9 +286,13 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 								// the operation must be resolved against the parent pipeline
 								// you may be using variables exposed by it rather then the original service
 								Type returnType = operation.getReturnType(getParent().getPipeline(serviceContext));
+								// in some very rare cases the min/max occurs can reside in the type (it shouldn't but notably the swagger client currently does this...)
+								// in that case, we want to force the max occurs to be 1 at design time, the runtime will always make it 1 as well
 								Element<?> element = returnType instanceof ComplexType
 									? new ComplexElementImpl(variable, (ComplexType) returnType, pipeline)
 									: new SimpleElementImpl(variable, (SimpleType<?>) returnType, pipeline);
+								((BaseTypeInstance) element).setMaintainDefaultValues(true);
+								element.setProperty(new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 1));
 								pipeline.add(element, false);
 							}
 							catch (Exception e) {
