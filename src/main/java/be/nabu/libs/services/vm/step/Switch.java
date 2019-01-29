@@ -6,6 +6,7 @@ import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.converter.ConverterFactory;
 import be.nabu.libs.services.api.ServiceContext;
@@ -14,6 +15,7 @@ import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.validator.api.Validation;
 
+@XmlType(propOrder = { "query" })
 public class Switch extends BaseStepGroup implements LimitedStepGroup {
 
 	/**

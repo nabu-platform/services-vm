@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.evaluator.types.api.TypeOperation;
 import be.nabu.libs.services.api.ServiceContext;
@@ -21,6 +22,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
+@XmlType(propOrder = {"from", "to", "mask", "optional", "fixedValue"})
 public class Link extends BaseStep {
 
 	private String from, to;

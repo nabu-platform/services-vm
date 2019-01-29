@@ -3,12 +3,14 @@ package be.nabu.libs.services.vm.step;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.validator.api.Validation;
 
+@XmlType(propOrder = { "path" })
 public class Drop extends BaseStep {
 
 	private String path;

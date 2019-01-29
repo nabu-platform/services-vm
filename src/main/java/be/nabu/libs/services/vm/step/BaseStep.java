@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.evaluator.EvaluationException;
 import be.nabu.libs.evaluator.PathAnalyzer;
@@ -32,6 +33,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
+@XmlType(propOrder = {"id", "label", "disabled", "comment", "name"})
 abstract public class BaseStep implements Step {
 
 	/**

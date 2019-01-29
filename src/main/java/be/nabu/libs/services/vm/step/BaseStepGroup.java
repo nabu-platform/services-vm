@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.converter.ConverterFactory;
 import be.nabu.libs.services.ServiceRuntime;
@@ -17,6 +18,7 @@ import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.validator.api.Validation;
 
+@XmlType(propOrder = {"children"})
 abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 
 	private List<Step> children = new ArrayList<Step>();

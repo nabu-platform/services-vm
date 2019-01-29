@@ -15,6 +15,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -45,6 +46,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
+@XmlType(propOrder = {"serviceId", "resultName", "temporaryMapping", "x", "y", "invocationOrder", "target", "targetProperties", "asynchronous" })
 public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 
 	private String resultName, serviceId;
@@ -295,6 +297,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		// do nothing
 	}
 
+	@XmlAttribute
 	public String getTarget() {
 		return target;
 	}
@@ -303,6 +306,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		this.target = target;
 	}
 
+	@XmlAttribute
 	public boolean isAsynchronous() {
 		return asynchronous;
 	}
@@ -310,9 +314,6 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	public void setAsynchronous(boolean asynchronous) {
 		this.asynchronous = asynchronous;
 	}
-
-	
-	
 	
 	//--------------------- key value pairs
 	

@@ -7,6 +7,7 @@ import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
@@ -18,10 +19,12 @@ import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.Validation;
 
+@XmlType(propOrder = { "variable", "suppressException", "types" })
 public class Catch extends BaseStepGroup implements LimitedStepGroup {
 
 	private List<Class<? extends Exception>> types;
 	private String variable;
+	private Boolean suppressException;
 	
 	private PipelineExtension pipeline;
 
@@ -137,7 +140,14 @@ public class Catch extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 	}
-	
+
+	@XmlAttribute
+	public Boolean getSuppressException() {
+		return suppressException;
+	}
+	public void setSuppressException(Boolean suppressException) {
+		this.suppressException = suppressException;
+	}
 	@Override
 	public void refresh() {
 		pipeline = null;

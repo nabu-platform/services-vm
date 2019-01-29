@@ -6,6 +6,7 @@ import java.util.Set;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlType;
 
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ import be.nabu.libs.types.properties.CommentProperty;
  *
  */
 @XmlRootElement
+@XmlType(propOrder = { "transactionVariable" })
 public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
@@ -59,6 +61,8 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			setVariable(context.getServiceInstance().getPipeline(), transactionVariable, transactionId);
 		}
 		Step lastExecuted = null;
+		Exception exception = null;
+		boolean logException = LOG_ERRORS;
 		try {
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {
@@ -90,9 +94,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		catch (Exception e) {
-			if (LOG_ERRORS) {
-				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", e);
-			}
+			exception = e;
 			// roll back pending transaction if any
 			if (transactionId != null) {
 				context.getExecutionContext().getTransactionContext().rollback(transactionId);
@@ -123,6 +125,10 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 									context.setCaughtException((Exception) toCheck);
 									executeIfLabel(catchClause, context);
 									context.setCaughtException(null);
+									// if we have successfully handled the catch check if we should suppress the exception from the log
+									if (catchClause.getSuppressException() != null && catchClause.getSuppressException()) {
+										logException = false;
+									}
 									break;
 								}
 								toCheck = toCheck.getCause();
@@ -138,6 +144,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					context.setCaughtException(e);
 					executeIfLabel(defaultCatchClause, context);
 					context.setCaughtException(null);
+					if (defaultCatchClause.getSuppressException() != null && defaultCatchClause.getSuppressException()) {
+						logException = false;
+					}
 				}
 				else if (e instanceof ServiceException)
 					throw (ServiceException) e;
@@ -148,6 +157,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		finally {
+			if (logException && exception != null) {
+				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", exception);
+			}
 			boolean lastExecutedFound = false;
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {

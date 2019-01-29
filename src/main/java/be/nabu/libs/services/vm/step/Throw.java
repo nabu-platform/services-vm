@@ -3,6 +3,7 @@ package be.nabu.libs.services.vm.step;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
@@ -15,6 +16,7 @@ import be.nabu.libs.validator.api.Validation;
  * @author alex
  *
  */
+@XmlType(propOrder = { "code", "message", "description" })
 public class Throw extends BaseStep {
 	
 	public Throw() {
@@ -26,6 +28,7 @@ public class Throw extends BaseStep {
 	}
 
 	/**
+	 * The message is meant to be a generic description of the problem, e.g. "You do not have enough credit."
 	 * This message is evaluated against the pipeline if you start it with "="
 	 * ="Can not find " + b/value + " in this"
 	 */
@@ -36,9 +39,17 @@ public class Throw extends BaseStep {
 	 */
 	private String code;
 	
+	/**
+	 * The description is meant to be a more detailed description of this particular problem instance, e.g. "Your current balance is 30, but that costs 50."
+	 * This description is evaluated against the pipeline if you start it with "="
+	 * ="Can not find " + b/value + " in this"
+	 */
+	private String description;
+	
 	@Override
 	public void execute(VMContext context) throws ServiceException {
 		Object messageValue = null;
+		Object descriptionValue = null;
 		Object codeValue = null;
 		if (message != null) {
 			if (message.startsWith("=")) {
@@ -46,6 +57,14 @@ public class Throw extends BaseStep {
 			}
 			else {
 				messageValue = message;
+			}
+		}
+		if (description != null) {
+			if (description.startsWith("=")) {
+				descriptionValue = getVariable(context.getServiceInstance().getPipeline(), description.substring(1));
+			}
+			else {
+				descriptionValue = description;
 			}
 		}
 		if (code != null) {
@@ -65,7 +84,9 @@ public class Throw extends BaseStep {
 			throw new ServiceException(codeValue == null ? null : codeValue.toString(), (String) null, (Exception) messageValue);
 		}
 		else {
-			throw new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString());
+			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString());
+			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
+			throw serviceException;
 		}
 	}
 
@@ -95,6 +116,7 @@ public class Throw extends BaseStep {
 		// do nothing
 	}
 
+	@XmlAttribute
 	public String getCode() {
 		return code;
 	}
@@ -102,4 +124,14 @@ public class Throw extends BaseStep {
 	public void setCode(String code) {
 		this.code = code;
 	}
+
+	@XmlAttribute
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+	
 }

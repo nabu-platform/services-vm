@@ -41,7 +41,9 @@ public class VMServiceInstance implements ServiceInstanceWithPipeline {
 			List<? extends Validation<?>> validations = validator.validate(input);
 			for (Validation<?> validation : validations) {
 				if (validation.getSeverity() == Severity.CRITICAL || validation.getSeverity() == Severity.ERROR) {
-					throw new ServiceException("VM-4", "The input is not valid: " + validations);
+					ServiceException serviceException = new ServiceException("VM-4", "The input is not valid: " + validations);
+					serviceException.setValidations(validations);
+					throw serviceException;
 				}
 			}
 		}

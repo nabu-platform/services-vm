@@ -3,6 +3,8 @@ package be.nabu.libs.services.vm.step;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlType;
+
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.VMContext;
@@ -13,6 +15,7 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 /**
  * Allows you to break out of control structures
  */
+@XmlType(propOrder = { "count" })
 public class Break extends BaseStep {
 
 	private int count = 1;
