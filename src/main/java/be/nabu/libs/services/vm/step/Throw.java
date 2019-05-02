@@ -5,6 +5,7 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlType;
 
+import be.nabu.libs.authentication.impl.ImpersonateToken;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.VMContext;
@@ -16,7 +17,7 @@ import be.nabu.libs.validator.api.Validation;
  * @author alex
  *
  */
-@XmlType(propOrder = { "code", "message", "description" })
+@XmlType(propOrder = { "code", "message", "description", "alias", "realm" })
 public class Throw extends BaseStep {
 	
 	public Throw() {
@@ -45,6 +46,12 @@ public class Throw extends BaseStep {
 	 * ="Can not find " + b/value + " in this"
 	 */
 	private String description;
+	
+	/**
+	 * For those cases (rather few) when you throw an exception for a different user then then current token
+	 * The most notable usecase is when you throw exceptions _while_ validating the user, you throw exceptions about them but they are not currently the active user
+	 */
+	private String alias, realm;
 	
 	@Override
 	public void execute(VMContext context) throws ServiceException {
@@ -76,17 +83,44 @@ public class Throw extends BaseStep {
 			}
 		}
 		// if we have a service exception and we don't want to add a code to it, just rethrow
-		if (messageValue instanceof ServiceException && codeValue == null) {
+		if (messageValue instanceof ServiceException && codeValue == null && descriptionValue == null && alias == null) {
 			throw ((ServiceException) messageValue);
 		}
 		// any other exception is wrapped
 		else if (messageValue instanceof Exception) {
-			throw new ServiceException(codeValue == null ? null : codeValue.toString(), (String) null, (Exception) messageValue);
+			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), (String) null, (Exception) messageValue);
+			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
+			enrichToken(context, serviceException);
+			throw serviceException;
 		}
 		else {
 			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString());
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
+			enrichToken(context, serviceException);
 			throw serviceException;
+		}
+	}
+
+	private void enrichToken(VMContext context, ServiceException serviceException) throws ServiceException {
+		// we have a different user
+		if (alias != null) {
+			Object alias;
+			if (this.alias.startsWith("=")) {
+				alias = getVariable(context.getServiceInstance().getPipeline(), this.alias.substring(1));
+			}
+			else {
+				alias = this.alias;
+			}
+			Object realm;
+			if (this.realm != null && this.realm.startsWith("=")) {
+				realm = getVariable(context.getServiceInstance().getPipeline(), this.realm.substring(1));
+			}
+			else {
+				realm = this.realm;
+			}
+			if (alias != null) {
+				serviceException.setToken(new ImpersonateToken(null, realm == null ? null : realm.toString(), alias == null ? null : alias.toString()));
+			}
 		}
 	}
 
@@ -120,7 +154,6 @@ public class Throw extends BaseStep {
 	public String getCode() {
 		return code;
 	}
-
 	public void setCode(String code) {
 		this.code = code;
 	}
@@ -129,9 +162,24 @@ public class Throw extends BaseStep {
 	public String getDescription() {
 		return description;
 	}
-
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	@XmlAttribute
+	public String getAlias() {
+		return alias;
+	}
+	public void setAlias(String alias) {
+		this.alias = alias;
+	}
+
+	@XmlAttribute
+	public String getRealm() {
+		return realm;
+	}
+	public void setRealm(String realm) {
+		this.realm = realm;
 	}
 	
 }
