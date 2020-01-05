@@ -94,7 +94,7 @@ public class Throw extends BaseStep {
 			throw serviceException;
 		}
 		else {
-			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString());
+			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString(), context.getCaughtException());
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
 			enrichToken(context, serviceException);
 			throw serviceException;
