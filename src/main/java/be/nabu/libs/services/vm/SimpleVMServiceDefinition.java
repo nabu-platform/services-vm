@@ -38,6 +38,7 @@ public class SimpleVMServiceDefinition implements VMService {
 	private Pipeline pipeline;
 	private ServiceInterface serviceInterface;
 	private ExecutorProvider executorProvider;
+	private String description;
 	
 	private String id;
 	private TypeConverter typeConverter;
@@ -215,4 +216,18 @@ public class SimpleVMServiceDefinition implements VMService {
 		this.executorProvider = executorProvider;
 	}
 
+	@Override
+	public String getDescription() {
+		return description;
+	}
+	@Override
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	@Override
+	public boolean isSupportsDescription() {
+		return true;
+	}
+	
 }
