@@ -76,7 +76,8 @@ public class Link extends BaseStep {
 		}
 		Object value;
 		if (isFixedValue) {
-			if (from.startsWith("=")) {
+			// you can also pass in the explicit string "=" which will not be evaluated
+			if (from.startsWith("=") && !from.equals("=")) {
 				value = getVariable(source, from.substring(1));
 			}
 			// escape equals sign
