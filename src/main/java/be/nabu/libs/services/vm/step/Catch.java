@@ -19,9 +19,10 @@ import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.Validation;
 
-@XmlType(propOrder = { "variable", "suppressException", "types" })
+@XmlType(propOrder = { "variable", "suppressException", "types", "codes" })
 public class Catch extends BaseStepGroup implements LimitedStepGroup {
 
+	private List<String> codes;
 	private List<Class<? extends Exception>> types;
 	private String variable;
 	private Boolean suppressException;
@@ -48,7 +49,14 @@ public class Catch extends BaseStepGroup implements LimitedStepGroup {
 			types = new ArrayList<Class<? extends Exception>>();
 		return types;
 	}
-
+	
+	public List<String> getCodes() {
+		return codes;
+	}
+	public void setCodes(List<String> codes) {
+		this.codes = codes;
+	}
+	
 	@XmlAttribute
 	public String getVariable() {
 		return variable;

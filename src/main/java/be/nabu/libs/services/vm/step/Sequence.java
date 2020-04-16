@@ -1,6 +1,8 @@
 package be.nabu.libs.services.vm.step;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAttribute;
@@ -114,8 +116,21 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 				}
 				else if (child instanceof Catch) {
 					Catch catchClause = (Catch) child;
-					if (catchClause.getTypes().size() == 0)
+					if (catchClause.getTypes().size() == 0 && (catchClause.getCodes() == null || catchClause.getCodes().isEmpty()))
 						defaultCatchClause = catchClause;
+					// if we have codes, they get precedence
+					else if (!catchClause.getCodes().isEmpty()) {
+						if (hasAnyCode(e, catchClause.getCodes())) {
+							matchFound = true;
+							context.setCaughtException(e);
+							executeIfLabel(catchClause, context);
+							context.setCaughtException(null);
+							// if we have successfully handled the catch check if we should suppress the exception from the log
+							if (catchClause.getSuppressException() != null && catchClause.getSuppressException()) {
+								logException = false;
+							}
+						}
+					}
 					else {
 						for (Class<?> exceptionType : catchClause.getTypes()) {
 							Throwable toCheck = e;
@@ -177,6 +192,25 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 				}
 			}
 		}
+	}
+	
+	private boolean hasAnyCode(Throwable throwable, List<String> codesToCheck) {
+		List<String> codes = getCodes(throwable);
+		List<String> original = new ArrayList<String>(codes);
+		codes.removeAll(codesToCheck);
+		return original.size() != codes.size();
+	}
+	
+	private List<String> getCodes(Throwable throwable) {
+		List<String> codes = new ArrayList<String>();
+		// the deepest service exception (if there are multiple) is what we are interested in
+		while(throwable != null) {
+			if (throwable instanceof ServiceException && ((ServiceException) throwable).getCode() != null) {
+				codes.add(((ServiceException) throwable).getCode());
+			}
+			throwable = throwable.getCause();
+		}
+		return codes;
 	}
 	
 	@XmlTransient
