@@ -1,6 +1,9 @@
 package be.nabu.libs.services.vm;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.xml.bind.annotation.XmlTransient;
@@ -8,13 +11,18 @@ import javax.xml.bind.annotation.XmlTransient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.artifacts.FeatureImpl;
+import be.nabu.libs.artifacts.api.Feature;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.vm.api.ExecutorProvider;
+import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
+import be.nabu.libs.services.vm.step.BaseStepGroup;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.BaseTypeInstance;
 import be.nabu.libs.types.TypeConverterFactory;
@@ -229,5 +237,27 @@ public class SimpleVMServiceDefinition implements VMService {
 	public boolean isSupportsDescription() {
 		return true;
 	}
+
+	@Override
+	public List<Feature> getAvailableFeatures() {
+		java.util.Map<String, Feature> features = new HashMap<String, Feature>();
+		getAvailableFeatures(getRoot(), features);
+		return new ArrayList<Feature>(features.values());
+	}
 	
+	private void getAvailableFeatures(Step step, java.util.Map<String, Feature> features) {
+		if (step.getFeatures() != null && !step.getFeatures().trim().isEmpty()) {
+			List<String> names = BaseStepGroup.getFeatures(step.getFeatures());
+			for (String name : names) {
+				if (!features.containsKey(name)) {
+					features.put(name, new FeatureImpl(name, null));
+				}
+			}
+		}
+		if (step instanceof StepGroup) {
+			for (Step child : ((StepGroup) step).getChildren()) {
+				getAvailableFeatures(child, features);
+			}
+		}
+	}
 }

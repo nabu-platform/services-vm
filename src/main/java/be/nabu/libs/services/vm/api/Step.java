@@ -42,6 +42,10 @@ public interface Step {
 	public boolean isDisabled();
 	public void setDisabled(boolean isDisabled);
 	
+	@XmlAttribute
+	public void setFeatures(String features);
+	public String getFeatures();
+	
 	/**
 	 * Refresh this step
 	 */

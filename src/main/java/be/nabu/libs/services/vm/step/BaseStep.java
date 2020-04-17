@@ -33,7 +33,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = {"id", "label", "disabled", "comment", "name"})
+@XmlType(propOrder = {"id", "label", "disabled", "comment", "name", "features"})
 abstract public class BaseStep implements Step {
 
 	/**
@@ -43,7 +43,7 @@ abstract public class BaseStep implements Step {
 	 */
 	private Map<String, TypeOperation> analyzedOperations = new HashMap<String, TypeOperation>();
 	
-	private String comment, name;
+	private String comment, name, features;
 	
 	private String id;
 	
@@ -266,6 +266,15 @@ abstract public class BaseStep implements Step {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
+
+	@XmlAttribute
+	@Override
+	public String getFeatures() {
+		return features;
+	}
+	@Override
+	public void setFeatures(String features) {
+		this.features = features;
+	}
 	
 }
