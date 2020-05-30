@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.libs.services.CombinedServiceRunner.CombinedServiceResult;
+import be.nabu.libs.services.ServiceRunnable;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
@@ -33,6 +34,7 @@ import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceResult;
+import be.nabu.libs.services.api.ServiceRunnableObserver;
 import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.vm.ManagedCloseable;
 import be.nabu.libs.services.vm.VMContext;
@@ -46,7 +48,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = {"serviceId", "resultName", "temporaryMapping", "x", "y", "invocationOrder", "target", "targetProperties", "asynchronous" })
+@XmlType(propOrder = {"serviceId", "resultName", "temporaryMapping", "x", "y", "invocationOrder", "target", "targetProperties", "asynchronous", "recache" })
 public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 
 	private String resultName, serviceId;
@@ -66,7 +68,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	
 	private String target;
 	
-	private boolean asynchronous = false;
+	private boolean asynchronous = false, recache = false;
 	
 	private List<ManagedCloseable> managedCloseables = new ArrayList<ManagedCloseable>();
 	
@@ -78,6 +80,29 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	
 	public Invoke(Link...links) {
 		super(links);
+	}
+	
+	protected void execute(Link link, ComplexContent from, ComplexContent to) throws ServiceException {
+		try {
+			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				ServiceRuntime.getRuntime().getRuntimeTracker().before(link);
+			}
+			link.execute(from, to);
+			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				ServiceRuntime.getRuntime().getRuntimeTracker().after(link);
+			}
+		}
+		catch (Exception e) {
+			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				ServiceRuntime.getRuntime().getRuntimeTracker().error(link, e);
+			}
+			if (e instanceof ServiceException) {
+				throw (ServiceException) e;
+			}
+			else {
+				throw new ServiceException("VM-6", link.getClass().getSimpleName() + ": " + link.getId(), e);
+			}
+		}
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -94,7 +119,8 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		// now map all the inputs
 		for (Step child : getChildren()) {
 			Link link = (Link) child;
-			link.execute(context.getServiceInstance().getPipeline(), input);
+//			link.execute(context.getServiceInstance().getPipeline(), input);
+			execute(link, context.getServiceInstance().getPipeline(), input);
 		}
 		
 		ExecutorProvider executor = context.getServiceInstance().getDefinition().getExecutorProvider();
@@ -111,7 +137,9 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 					@Override
 					public void run() {
 						try {
-							new ServiceRuntime(service, executionContext).run(input);
+							ServiceRuntime serviceRuntime = new ServiceRuntime(service, executionContext);
+							serviceRuntime.setRecache(recache);
+							serviceRuntime.run(input);
 						}
 						catch (ServiceException e) {
 							logger.error("Asynchronous execution exception occurred", e);
@@ -121,7 +149,9 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 				result = null;
 			}
 			else {
-				result = new ServiceRuntime(service, context.getExecutionContext()).run(input);
+				ServiceRuntime serviceRuntime = new ServiceRuntime(service, context.getExecutionContext());
+				serviceRuntime.setRecache(recache);
+				result = serviceRuntime.run(input);
 			}
 		}
 		else {
@@ -149,7 +179,19 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			if (asynchronous && executionContext instanceof ForkableExecutionContext) {
 				executionContext = ((ForkableExecutionContext) executionContext).fork();
 			}
-			Future<ServiceResult> run = runner.run(service, executionContext, input);
+			ServiceRunnableObserver [] observers = recache
+				? new ServiceRunnableObserver[] { new ServiceRunnableObserver() {
+					@Override
+					public void start(ServiceRunnable runnable) {
+						runnable.getRuntime().setRecache(true);
+					}
+					@Override
+					public void stop(ServiceRunnable runnable) {
+						
+					}
+				}}
+				: new ServiceRunnableObserver[0];
+			Future<ServiceResult> run = runner.run(service, executionContext, input, observers);
 			if (!asynchronous && run != null) {
 				try {
 					ServiceResult serviceResult = run.get();
@@ -304,6 +346,14 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 
 	public void setTarget(String target) {
 		this.target = target;
+	}
+
+	@XmlAttribute
+	public boolean isRecache() {
+		return recache;
+	}
+	public void setRecache(boolean recache) {
+		this.recache = recache;
 	}
 
 	@XmlAttribute
