@@ -9,6 +9,9 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.libs.converter.ConverterFactory;
 import be.nabu.libs.evaluator.QueryParser;
 import be.nabu.libs.evaluator.QueryPart;
@@ -34,6 +37,7 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 
 	private List<Step> children = new ArrayList<Step>();
 	private java.util.Map<String, Structure> childFeatures = new HashMap<String, Structure>();
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public BaseStepGroup(VMService definition, Step...steps) {
 		super(definition);
@@ -114,7 +118,6 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 			for (Element<?> feature : instance.getType()) {
 				instance.set(feature.getName(), enabled.contains(feature.getName()));
 			}
-			System.out.println("Executing '" + child.getFeatures() + "' on " + instance + " = " + getVariable(instance, child.getFeatures()));
 			execute = (Boolean) getVariable(instance, child.getFeatures());
 		}
 		if (execute && child.getLabel() != null) {
@@ -131,6 +134,27 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 		return execute;
 	}
 	
+	protected void emitDescription(Step child, VMContext context) {
+		try {
+			if (child.getDescription() != null) {
+				Object descriptionValue;
+				if (child.getDescription().startsWith("=")) {
+					descriptionValue = getVariable(context.getServiceInstance().getPipeline(), child.getDescription().substring(1));
+				}
+				else {
+					descriptionValue = child.getDescription();
+				}
+				if (descriptionValue != null) {
+					ServiceRuntime.getRuntime().getRuntimeTracker().describe(descriptionValue);
+				}
+			}
+		}
+		// we don't want this suppressing actual exceptions
+		catch (Exception e) {
+			logger.warn("Could not output child description: " + child.getDescription(), e);
+		}
+	}
+	
 	protected void execute(Step child, VMContext context) throws ServiceException {
 		try {
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
@@ -138,11 +162,13 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 			}
 			child.execute(context);
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				emitDescription(child, context);
 				ServiceRuntime.getRuntime().getRuntimeTracker().after(child);
 			}
 		}
 		catch (Exception e) {
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
+				emitDescription(child, context);
 				ServiceRuntime.getRuntime().getRuntimeTracker().error(child, e);
 			}
 			if (e instanceof ServiceException) {

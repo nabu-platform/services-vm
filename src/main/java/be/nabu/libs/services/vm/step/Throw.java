@@ -17,7 +17,7 @@ import be.nabu.libs.validator.api.Validation;
  * @author alex
  *
  */
-@XmlType(propOrder = { "code", "message", "description", "alias", "realm" })
+@XmlType(propOrder = { "code", "message", "alias", "realm" })
 public class Throw extends BaseStep {
 	
 	public Throw() {
@@ -34,18 +34,16 @@ public class Throw extends BaseStep {
 	 * ="Can not find " + b/value + " in this"
 	 */
 	private String message;
-	
-	/**
-	 * A reference code 
-	 */
-	private String code;
-	
 	/**
 	 * The description is meant to be a more detailed description of this particular problem instance, e.g. "Your current balance is 30, but that costs 50."
 	 * This description is evaluated against the pipeline if you start it with "="
 	 * ="Can not find " + b/value + " in this"
 	 */
-	private String description;
+	
+	/**
+	 * A reference code 
+	 */
+	private String code;
 	
 	/**
 	 * For those cases (rather few) when you throw an exception for a different user then then current token
@@ -66,6 +64,7 @@ public class Throw extends BaseStep {
 				messageValue = message;
 			}
 		}
+		String description = getDescription();
 		if (description != null) {
 			if (description.startsWith("=")) {
 				descriptionValue = getVariable(context.getServiceInstance().getPipeline(), description.substring(1));
@@ -156,14 +155,6 @@ public class Throw extends BaseStep {
 	}
 	public void setCode(String code) {
 		this.code = code;
-	}
-
-	@XmlAttribute
-	public String getDescription() {
-		return description;
-	}
-	public void setDescription(String description) {
-		this.description = description;
 	}
 
 	@XmlAttribute

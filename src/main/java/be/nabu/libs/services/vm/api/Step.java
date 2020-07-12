@@ -46,6 +46,10 @@ public interface Step {
 	public void setFeatures(String features);
 	public String getFeatures();
 	
+	@XmlAttribute
+	public void setDescription(String description);
+	public String getDescription();
+	
 	/**
 	 * Refresh this step
 	 */
