@@ -1,6 +1,7 @@
 package be.nabu.libs.services.vm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -15,15 +16,23 @@ import be.nabu.libs.artifacts.FeatureImpl;
 import be.nabu.libs.artifacts.api.Feature;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Value;
+import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedServiceInterface;
+import be.nabu.libs.services.api.ExceptionDescription;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
+import be.nabu.libs.services.api.Service;
+import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceInterface;
+import be.nabu.libs.services.api.ServiceWithMetadata;
+import be.nabu.libs.services.impl.ExceptionDescriptionImpl;
 import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.services.vm.step.BaseStepGroup;
+import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Sequence;
+import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.types.BaseTypeInstance;
 import be.nabu.libs.types.TypeConverterFactory;
 import be.nabu.libs.types.TypeUtils;
@@ -39,7 +48,7 @@ import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.types.properties.AspectProperty;
 import be.nabu.libs.types.properties.CollectionHandlerProviderProperty;
 
-public class SimpleVMServiceDefinition implements VMService {
+public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata {
 
 	private ComplexType input, output;
 	private Sequence root;
@@ -260,4 +269,37 @@ public class SimpleVMServiceDefinition implements VMService {
 			}
 		}
 	}
+
+	@Override
+	public List<ExceptionDescription> getExceptions(ServiceContext serviceContext) {
+		List<ExceptionDescription> exceptions = new ArrayList<ExceptionDescription>();
+		getExceptions(serviceContext, getRoot(), exceptions);
+		return ServiceUtils.unique(exceptions);
+	}
+	
+	private void getExceptions(ServiceContext serviceContext, StepGroup group, List<ExceptionDescription> descriptions) {
+		if (group.getChildren() != null) {
+			for (Step child : group.getChildren()) {
+				if (child instanceof Throw) {
+					ExceptionDescriptionImpl exception = new ExceptionDescriptionImpl();
+					exception.setId(child.getId());
+					exception.setMessage(((Throw) child).getMessage());
+					exception.setDescription(child.getDescription());
+					exception.setCode(((Throw) child).getCode());
+					exception.setContext(Arrays.asList(getId(), group.getId(), child.getId()));
+					descriptions.add(exception);
+				}
+				if (child instanceof Invoke) {
+					Service service = ((Invoke) child).getService(serviceContext);
+					if (service instanceof ServiceWithMetadata) {
+						descriptions.addAll(((ServiceWithMetadata) service).getExceptions(serviceContext));
+					}
+				}
+				if (child instanceof StepGroup) {
+					getExceptions(serviceContext, (StepGroup) child, descriptions);
+				}
+			}
+		}
+	}
+	
 }
