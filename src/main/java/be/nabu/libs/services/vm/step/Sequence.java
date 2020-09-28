@@ -10,6 +10,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.libs.services.api.ServiceContext;
@@ -38,6 +39,8 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
 	private String transactionVariable;
+	
+	private Logger logger = LoggerFactory.getLogger(getClass());
 
 	private SimpleTypeWrapper simpleTypeWrapper;
 	
@@ -99,7 +102,12 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			exception = e;
 			// roll back pending transaction if any
 			if (transactionId != null) {
-				context.getExecutionContext().getTransactionContext().rollback(transactionId);
+				try {
+					context.getExecutionContext().getTransactionContext().rollback(transactionId);
+				}
+				catch (Exception f) {
+					logger.warn("Could not rollback transaction context during sequence exception handling", f);
+				}
 			}
 			boolean matchFound = false;
 			Catch defaultCatchClause = null;
