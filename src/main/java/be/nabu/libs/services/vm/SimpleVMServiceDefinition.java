@@ -12,25 +12,23 @@ import javax.xml.bind.annotation.XmlTransient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.artifacts.ArtifactUtils;
+import be.nabu.libs.artifacts.ExceptionDescriptionImpl;
 import be.nabu.libs.artifacts.FeatureImpl;
+import be.nabu.libs.artifacts.api.ArtifactWithExceptions;
+import be.nabu.libs.artifacts.api.ExceptionDescription;
+import be.nabu.libs.artifacts.api.ExceptionDescription.ExceptionType;
 import be.nabu.libs.artifacts.api.Feature;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Value;
-import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedServiceInterface;
-import be.nabu.libs.services.api.ExceptionDescription;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
-import be.nabu.libs.services.api.Service;
-import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceInterface;
-import be.nabu.libs.services.api.ServiceWithMetadata;
-import be.nabu.libs.services.impl.ExceptionDescriptionImpl;
 import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.services.vm.step.BaseStepGroup;
-import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.types.BaseTypeInstance;
@@ -48,7 +46,7 @@ import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.types.properties.AspectProperty;
 import be.nabu.libs.types.properties.CollectionHandlerProviderProperty;
 
-public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata {
+public class SimpleVMServiceDefinition implements VMService, ArtifactWithExceptions {
 
 	private ComplexType input, output;
 	private Sequence root;
@@ -72,6 +70,8 @@ public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata
 	 * TODO: this should be moved to the mapping engine
 	 */
 	private boolean allowTypeExpansion = true;
+	
+	private boolean allowEmptyStructureMapping = Boolean.parseBoolean(System.getProperty("allow.empty.structure.mapping", "false"));
 	
 	public SimpleVMServiceDefinition(ComplexType from, ComplexType to) {
 		this.input = from;
@@ -148,7 +148,7 @@ public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata
 		}
 		
 		// if the target type has no children, it's an empty one, it can hold anything, allow it
-		if (!mappable && fromType instanceof ComplexType && toType instanceof ComplexType && !TypeUtils.getAllChildrenIterator((ComplexType) toType).hasNext()) {
+		if (allowEmptyStructureMapping && !mappable && fromType instanceof ComplexType && toType instanceof ComplexType && !TypeUtils.getAllChildrenIterator((ComplexType) toType).hasNext()) {
 			mappable = true;
 		}
 		// if the target is java.lang.Object, you can assign anything
@@ -271,13 +271,14 @@ public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata
 	}
 
 	@Override
-	public List<ExceptionDescription> getExceptions(ServiceContext serviceContext) {
+	public List<ExceptionDescription> getExceptions() {
 		List<ExceptionDescription> exceptions = new ArrayList<ExceptionDescription>();
-		getExceptions(serviceContext, getRoot(), exceptions);
-		return ServiceUtils.unique(exceptions);
+		getExceptions(getRoot(), exceptions);
+		exceptions.addAll(getStandardExceptions());
+		return ArtifactUtils.unique(exceptions);
 	}
 	
-	private void getExceptions(ServiceContext serviceContext, StepGroup group, List<ExceptionDescription> descriptions) {
+	private void getExceptions(StepGroup group, List<ExceptionDescription> descriptions) {
 		if (group.getChildren() != null) {
 			for (Step child : group.getChildren()) {
 				if (child instanceof Throw) {
@@ -287,19 +288,43 @@ public class SimpleVMServiceDefinition implements VMService, ServiceWithMetadata
 					exception.setDescription(child.getDescription());
 					exception.setCode(((Throw) child).getCode());
 					exception.setContext(Arrays.asList(getId(), group.getId(), child.getId()));
+					exception.setType(ExceptionType.BUSINESS);
 					descriptions.add(exception);
 				}
-				if (child instanceof Invoke) {
-					Service service = ((Invoke) child).getService(serviceContext);
-					if (service instanceof ServiceWithMetadata) {
-						descriptions.addAll(((ServiceWithMetadata) service).getExceptions(serviceContext));
-					}
-				}
+				// don't recurse, we currently don't have a way to block circular references...
+//				if (child instanceof Invoke) {
+//					String serviceId = ((Invoke) child).getServiceId();
+//					if (serviceId != null) {
+//						DefinedService service = (DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(serviceId);
+//						if (service instanceof ArtifactWithExceptions) {
+//							List<ExceptionDescription> exceptions = ((ArtifactWithExceptions) service).getExceptions();
+//							if (exceptions != null) {
+//								descriptions.addAll(exceptions);
+//							}
+//						}
+//					}
+//				}
 				if (child instanceof StepGroup) {
-					getExceptions(serviceContext, (StepGroup) child, descriptions);
+					getExceptions((StepGroup) child, descriptions);
 				}
 			}
 		}
 	}
 	
+	private List<ExceptionDescription> getStandardExceptions() {
+		List<ExceptionDescription> descriptions = new ArrayList<ExceptionDescription>();
+		descriptions.add(new ExceptionDescriptionImpl("VM-1", "VM-1", "Invalid set operation", "Only variable operations are allowed when setting values", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-2", "VM-2", "Can only manage closeables", "Something marked as a closeable that should be managed, is not a closeable or a list of closeables", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-3", "VM-3", "Service not found", "Can not find the service that needs to be invoked, it may have been deleted", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-4", "VM-4", "Invalid input data", "The input for the service does not pass the required validation rules"));
+		descriptions.add(new ExceptionDescriptionImpl("VM-5", "VM-5", "Invalid output data", "The output for the service does not pass the required validation rules"));
+		descriptions.add(new ExceptionDescriptionImpl("VM-6", "VM-6", "Step execution error", "A general error occurred when executing the given step"));
+		descriptions.add(new ExceptionDescriptionImpl("VM-7", "VM-7", "Can only mask complex types", "The design time value is not a complex type", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-8", "VM-8", "Can only mask complex content", "The runtime value can not be cast to a complex content", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-9", "VM-9", "Invalid target environment", "The configured execution target could not be found", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-10", "VM-10", "Link is missing 'to'", "The link does not have a to value", ExceptionType.DESIGN));
+		descriptions.add(new ExceptionDescriptionImpl("VM-11", "VM-11", "Batch size is not a number", "The configured batch size is not a number or does not resolve to a number", ExceptionType.DESIGN));
+		return descriptions;
+	}
+
 }

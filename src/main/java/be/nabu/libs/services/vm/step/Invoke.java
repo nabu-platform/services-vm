@@ -215,7 +215,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 					}
 				}
 				catch (Exception e) {
-					throw new ServiceException("VM-10", "Remote execution error", e);
+					throw new ServiceException("VM-6", "Remote execution error", e);
 				}
 			}
 			else {

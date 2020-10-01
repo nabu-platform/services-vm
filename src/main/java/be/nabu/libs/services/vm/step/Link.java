@@ -65,7 +65,7 @@ public class Link extends BaseStep {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void execute(ComplexContent source, ComplexContent target) throws ServiceException {
 		if (to == null) {
-			throw new ServiceException("VM-INVALID", "Missing link to variable");
+			throw new ServiceException("VM-10", "Missing link to variable");
 		}
 		// if it's optional, first check whether the "to" is null
 		if (isOptional) {
