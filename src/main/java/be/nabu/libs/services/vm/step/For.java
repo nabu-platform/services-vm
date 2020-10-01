@@ -2,7 +2,6 @@ package be.nabu.libs.services.vm.step;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -39,10 +38,17 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = { "variable", "index", "query", "batchSize" })
+@XmlType(propOrder = { "variable", "index", "query", "batchSize", "into" })
 public class For extends BaseStepGroup implements LimitedStepGroup {
 
-	private String variable, indexName, query, batchSize;
+	// the "into" field allows you to indicate a target array (which must exist on the pipeline)
+	// in each iteration you can choose to map [0, batchSize] amount of items into the target array which will then be added to the total result
+	// this allows for easier construction of mappings without the need for a drop, add to list etc
+	// the into remains an array, even in the loop, this is easier (cause the data structure doesn't change) but it is also more powerful
+	// this allows you to reduce a loop from say 5000 elements into a result of say 3000
+	// but you can also enrich from 5000 to for example 7000
+	// or do a 1-1 mapping
+	private String variable, indexName, query, batchSize, into;
 	
 	private SimpleTypeWrapper simpleTypeWrapper;
 	
@@ -62,12 +68,55 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void addInto(List into, Object result) {
+		if (result != null) {
+			if (!(result instanceof Iterable)) {
+				CollectionHandlerProvider handler = CollectionHandlerFactory.getInstance().getHandler().getHandler(result.getClass());
+				if (handler == null) {
+					throw new IllegalArgumentException("Can not merge result into the requested target");
+				}
+				result = handler.getAsIterable(result);
+			}
+			for (Object single : (Iterable) result) {
+				into.add(single);
+			}
+		}
+	}
+	
+	private void addInto(VMContext context, Object resultingInto) throws ServiceException {
+		if (into != null) {
+			Object partialResult = getVariable(context.getServiceInstance().getPipeline(), into);
+			System.out.println("adding partial result: " + partialResult + " into " + resultingInto);
+			addInto((List) resultingInto, partialResult);
+			// reset to null again for next iteration
+			setVariable(context.getServiceInstance().getPipeline(), into, null);
+		}
+	}
+	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public void execute(VMContext context) throws ServiceException {
 		Object value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
 		if (value != null) {
 			Object batchSize = this.batchSize == null ? null : getVariable(context.getServiceInstance().getPipeline(), this.batchSize);
+			
+			Object resultingInto = null;
+			
+			if (into != null) {
+				resultingInto = getVariable(context.getServiceInstance().getPipeline(), into);
+				if (resultingInto == null) {
+					resultingInto = new ArrayList();
+				}
+				else if (!(resultingInto instanceof List)) {
+					List list = new ArrayList();
+					addInto(list, resultingInto);
+					resultingInto = list;
+				}
+				// set the into to null so we can start creating sublists
+				setVariable(context.getServiceInstance().getPipeline(), into, null);
+			}
+				
 			long increment = batchSize instanceof Number ? ((Number) batchSize).longValue() : 1;
 			// if we have a boolean, we execute until it is not true
 			if (value instanceof Boolean) {
@@ -106,6 +155,8 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						}
 					}
 					executeSteps(context);
+					// do it _before_ we check for break
+					addInto(context, resultingInto);
 					// check break count
 					if (context.mustBreak()) {
 						context.decreaseBreakCount();
@@ -154,6 +205,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						}
 					}
 					executeSteps(context);
+					addInto(context, resultingInto);
 					// check break count
 					if (context.mustBreak()) {
 						context.decreaseBreakCount();
@@ -176,6 +228,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, single);
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
 							context.decreaseBreakCount();
@@ -209,6 +262,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 								setVariable(context.getServiceInstance().getPipeline(), variable, values);
 							}
 							executeSteps(context);
+							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
 								context.decreaseBreakCount();
@@ -236,6 +290,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, values);
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 					}
 				}
 			}
@@ -276,6 +331,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 								setVariable(context.getServiceInstance().getPipeline(), variable, values);
 							}
 							executeSteps(context);
+							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
 								context.decreaseBreakCount();
@@ -303,6 +359,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, values);
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 					}
 				}
 				else {
@@ -332,6 +389,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 								setVariable(context.getServiceInstance().getPipeline(), variable, values);
 							}
 							executeSteps(context);
+							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
 								context.decreaseBreakCount();
@@ -359,6 +417,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, values);
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 					}
 				}
 			}
@@ -383,6 +442,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, single);
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
 							context.decreaseBreakCount();
@@ -410,6 +470,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
 						}
 						executeSteps(context);
+						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
 							context.decreaseBreakCount();
@@ -420,6 +481,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						}
 					}
 				}
+			}
+			
+			// we have been building a resultset, push it to the pipeline
+			if (into != null) {
+				setVariable(context.getServiceInstance().getPipeline(), into, resultingInto);
 			}
 		}
 	}
@@ -456,6 +522,14 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	}
 	public void setBatchSize(String batchSize) {
 		this.batchSize = batchSize;
+	}
+
+	@XmlAttribute
+	public String getInto() {
+		return into;
+	}
+	public void setInto(String into) {
+		this.into = into;
 	}
 
 	@XmlAttribute
@@ -565,7 +639,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 			messages.addAll(checkNameInScope(serviceContext, indexName));
 		}
 		if (query == null || query.isEmpty()) {
-			messages.add(addContext(new ValidationMessage(Severity.ERROR, "No query defined for the 'for' loop")));
+			messages.add(addContext(new ValidationMessage(Severity.WARNING, "No query defined for the 'for' loop")));
 		}
 		else {
 			messages.addAll(validateQuery(serviceContext, query));
