@@ -214,6 +214,9 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 						result = serviceResult.getOutput();
 					}
 				}
+				catch (ServiceException e) {
+					throw e;
+				}
 				catch (Exception e) {
 					throw new ServiceException("VM-6", "Remote execution error", e);
 				}

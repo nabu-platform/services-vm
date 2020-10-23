@@ -34,11 +34,12 @@ import be.nabu.libs.types.properties.CommentProperty;
  *
  */
 @XmlRootElement
-@XmlType(propOrder = { "transactionVariable" })
+@XmlType(propOrder = { "transactionVariable", "suppressException" })
 public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
 	private String transactionVariable;
+	private Boolean suppressException;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -68,6 +69,10 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 		Step lastExecuted = null;
 		Exception exception = null;
 		boolean logException = LOG_ERRORS;
+		// if we want to suppress the exception, don't log it (some errors are intentional, like not wanting to cache because we can't annotate it etc)
+		if (logException && suppressException != null && suppressException) {
+			logException = false;
+		}
 		try {
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {
@@ -286,4 +291,13 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	public void refresh() {
 		pipeline = null;
 	}
+	
+	@XmlAttribute
+	public Boolean getSuppressException() {
+		return suppressException;
+	}
+	public void setSuppressException(Boolean suppressException) {
+		this.suppressException = suppressException;
+	}
+	
 }
