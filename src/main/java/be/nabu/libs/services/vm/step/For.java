@@ -87,7 +87,6 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	private void addInto(VMContext context, Object resultingInto) throws ServiceException {
 		if (into != null) {
 			Object partialResult = getVariable(context.getServiceInstance().getPipeline(), into);
-			System.out.println("adding partial result: " + partialResult + " into " + resultingInto);
 			addInto((List) resultingInto, partialResult);
 			// reset to null again for next iteration
 			setVariable(context.getServiceInstance().getPipeline(), into, null);
