@@ -11,7 +11,6 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
-import be.nabu.libs.evaluator.EvaluationException;
 import be.nabu.libs.evaluator.PathAnalyzer;
 import be.nabu.libs.evaluator.QueryParser;
 import be.nabu.libs.evaluator.impl.VariableOperation;
@@ -91,11 +90,8 @@ abstract public class BaseStep implements Step {
 		try {
 			return getOperation(query).evaluate(pipeline);
 		}
-		catch (EvaluationException e) {
-			throw new ServiceException(e);
-		}
-		catch (ParseException e) {
-			throw new ServiceException(e);
+		catch (Exception e) {
+			throw new ServiceException("VM-13", "Could not get '" + query + "' from pipeline", e);
 		}
 		finally {
 			VariableOperation.unregisterRoot();
@@ -110,11 +106,8 @@ abstract public class BaseStep implements Step {
 			String path = ((TypeVariableOperation) operation).resolve(pipeline);
 			pipeline.set(path, value);
 		}
-		catch(EvaluationException e) {
-			throw new ServiceException(e);
-		}
-		catch (ParseException e) {
-			throw new ServiceException(e);
+		catch (Exception e) {
+			throw new ServiceException("VM-12", "Could not set '" + query + "' to '" + value + "' in pipeline", e);
 		}
 		finally {
 			VariableOperation.unregisterRoot();
