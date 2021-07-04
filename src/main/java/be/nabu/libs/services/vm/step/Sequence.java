@@ -184,6 +184,25 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					throw new ServiceException(e);
 			}
 		}
+		catch (Error e) {
+			logger.error("An error has occurred in the sequence " + getId() + ", the last executed child: " + (lastExecuted == null ? "unknown" : lastExecuted.getId()), e);
+			// roll back pending transaction if any
+			if (transactionId != null) {
+				try {
+					context.getExecutionContext().getTransactionContext().rollback(transactionId);
+				}
+				catch (Exception f) {
+					logger.warn("Could not rollback transaction context during sequence exception handling", f);
+				}
+			}
+			// we need the additional context to find the problem...
+			if (e instanceof StackOverflowError) {
+				throw new ServiceException(e);
+			}
+			else {
+				throw e;
+			}
+		}
 		finally {
 			if (logException && exception != null) {
 				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", exception);
