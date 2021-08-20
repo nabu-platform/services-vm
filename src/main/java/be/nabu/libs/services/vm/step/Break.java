@@ -14,6 +14,10 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 /**
  * Allows you to break out of control structures
+ * 
+ * Might want to add a "continue" option. If your final target is a for loop, we can offer a "continue" boolean, meaning that it will continue with the next iteration.
+ * Continue is not needed in most cases so a dedicated control structure seems useless. If you have nested loops, you can "break" out of the inner loops and continue the outer loop with a single statement.
+ * Only if breakcount is exactly 1 will the continue be taken into account.
  */
 @XmlType(propOrder = { "count" })
 public class Break extends BaseStep {
