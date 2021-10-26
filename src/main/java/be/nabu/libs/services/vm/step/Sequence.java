@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -34,11 +35,15 @@ import be.nabu.libs.types.properties.CommentProperty;
  *
  */
 @XmlRootElement
-@XmlType(propOrder = { "transactionVariable", "suppressException" })
+@XmlType(propOrder = { "transactionVariable", "suppressException", "scopeDefaultTransaction" })
 public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
 	private String transactionVariable;
+	// you can choose to scope the default transaction to this sequence
+	// that means any action with no explicit transaction id is committed or rolled back
+	private Boolean scopeDefaultTransaction;
+	
 	private Boolean suppressException;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
@@ -73,6 +78,13 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 		if (logException && suppressException != null && suppressException) {
 			logException = false;
 		}
+		String previousDefaultTransactionId = null;
+		String localDefaultTransactionId = null;
+		if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
+			previousDefaultTransactionId = context.getExecutionContext().getTransactionContext().getDefaultTransactionId();
+			localDefaultTransactionId = UUID.randomUUID().toString().replace("-", "");
+			context.getExecutionContext().getTransactionContext().setDefaultTransactionId(localDefaultTransactionId);
+		}
 		try {
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {
@@ -102,6 +114,14 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					context.getExecutionContext().getTransactionContext().commit(transactionId);
 				}
 			}
+			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
+				if (isAborted()) {
+					context.getExecutionContext().getTransactionContext().rollback(localDefaultTransactionId);
+				}
+				else {
+					context.getExecutionContext().getTransactionContext().commit(localDefaultTransactionId);
+				}
+			}
 		}
 		catch (Exception e) {
 			exception = e;
@@ -113,6 +133,16 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 				catch (Exception f) {
 					logger.warn("Could not rollback transaction context during sequence exception handling", f);
 				}
+			}
+			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
+				try {
+					context.getExecutionContext().getTransactionContext().rollback(localDefaultTransactionId);
+				}
+				catch (Exception f) {
+					logger.warn("Could not rollback default transaction context during sequence exception handling", f);
+				}
+				// this is also "rolled back" in the finally, but we want to do it here already, if the catch is using transactions, it should not be this one
+				context.getExecutionContext().getTransactionContext().setDefaultTransactionId(previousDefaultTransactionId);
 			}
 			boolean matchFound = false;
 			Catch defaultCatchClause = null;
@@ -195,6 +225,16 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					logger.warn("Could not rollback transaction context during sequence exception handling", f);
 				}
 			}
+			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
+				try {
+					context.getExecutionContext().getTransactionContext().rollback(localDefaultTransactionId);
+				}
+				catch (Exception f) {
+					logger.warn("Could not rollback default transaction context during sequence exception handling", f);
+				}
+				// this is also "rolled back" in the finally, but we want to do it here already, if the catch is using transactions, it should not be this one
+				context.getExecutionContext().getTransactionContext().setDefaultTransactionId(previousDefaultTransactionId);
+			}
 			// we need the additional context to find the problem...
 			if (e instanceof StackOverflowError) {
 				throw new ServiceException(e);
@@ -204,6 +244,10 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		finally {
+			// in the beginning of the finally, any finally step should not be using the localized default transaction
+			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
+				context.getExecutionContext().getTransactionContext().setDefaultTransactionId(previousDefaultTransactionId);
+			}
 			if (logException && exception != null) {
 				LoggerFactory.getLogger(context.getServiceInstance().getDefinition().getId()).error("Sequence '" + getId() + "' exited with exception", exception);
 			}
@@ -297,6 +341,14 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	}
 	public void setTransactionVariable(String transactionVariable) {
 		this.transactionVariable = transactionVariable;
+	}
+	
+	@XmlAttribute
+	public Boolean getScopeDefaultTransaction() {
+		return scopeDefaultTransaction;
+	}
+	public void setScopeDefaultTransaction(Boolean scopeDefaultTransaction) {
+		this.scopeDefaultTransaction = scopeDefaultTransaction;
 	}
 	
 	@XmlTransient

@@ -23,6 +23,7 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.CombinedServiceRunner.CombinedServiceResult;
 import be.nabu.libs.services.ServiceRunnable;
 import be.nabu.libs.services.ServiceRuntime;
@@ -41,9 +42,13 @@ import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.services.vm.ManagedCloseable.Scope;
 import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.KeyValuePair;
+import be.nabu.libs.types.api.SimpleType;
+import be.nabu.libs.types.properties.MinOccursProperty;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -296,8 +301,15 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 	@Override
 	public List<Validation<?>> validate(ServiceContext serviceContext) {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
-		if (getService(serviceContext) == null) {
+		Service service = getService(serviceContext);
+		if (service == null) {
 			messages.add(addContext(new ValidationMessage(Severity.ERROR, "Could not find service: " + serviceId)));
+		}
+		// we want to validate that mandatory input fields are mapped, let's keep it simple for now
+		else {
+			ComplexType inputDefinition = service.getServiceInterface().getInputDefinition();
+			// the "input" is not included in the "to" path
+			validateInputMapping(inputDefinition, null, getMappedPaths(), messages);
 		}
 		if (target != null && target.startsWith("=")) {
 			messages.addAll(validateQuery(serviceContext, target.substring(1)));
@@ -311,6 +323,57 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		return messages;
+	}
+
+	private List<String> getMappedPaths() {
+		List<Step> children2 = getChildren();
+		List<String> paths = new ArrayList<String>();
+		if (children2 != null) {
+			for (Step child : children2) {
+				if (child instanceof Link) {
+					String to = ((Link) child).getTo();
+					// we remove any queries or indexes, they don't matter
+					to = to.replaceAll("\\[[^\\]]+", "");
+					if (!paths.contains(to)) {
+						paths.add(to);
+					}
+				}
+			}
+		}
+		return paths;
+	}
+	
+	private void validateInputMapping(ComplexType inputDefinition, String path, List<String> mappedPaths, List<Validation<?>> messages) {
+		// if there is a link that maps to the entire input, we stop checking
+		for (Element<?> child : TypeUtils.getAllChildren(inputDefinition)) {
+			Value<Integer> property = child.getProperty(MinOccursProperty.getInstance());
+			// if it's optional, we don't care
+			if (property != null && property.getValue() == 0) {
+				continue;
+			}
+			String childPath = path == null ? child.getName() : path + "/" + child.getName();
+			// if we find a link that maps to this
+			if (mappedPaths.contains(childPath)) {
+				continue;
+			}
+			// if we have a required simple type with no mapping, we flag it 
+			else if (child.getType() instanceof SimpleType) {
+				messages.add(addContext(new ValidationMessage(Severity.WARNING, "Missing mapping for required input: " + childPath + " (" + serviceId + ")")));
+			}
+			// for complex, we check if there are _any_ mappings to a child, if so, we don't check further (for now...)
+			else if (child.getType() instanceof ComplexType) {
+				boolean anyMapped = false;
+				for (String mappedPath : mappedPaths) {
+					if (mappedPath.startsWith(childPath + "/")) {
+						anyMapped = true;
+						break;
+					}
+				}
+				if (!anyMapped) {
+					messages.add(addContext(new ValidationMessage(Severity.WARNING, "Missing mapping for required input: " + childPath + " (" + serviceId + ")")));
+				}
+			}
+		}
 	}
 
 	@XmlTransient
