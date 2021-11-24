@@ -333,7 +333,7 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 				if (child instanceof Link) {
 					String to = ((Link) child).getTo();
 					// we remove any queries or indexes, they don't matter
-					to = to.replaceAll("\\[[^\\]]+", "");
+					to = to.replaceAll("\\[[^\\]]+\\]", "");
 					if (!paths.contains(to)) {
 						paths.add(to);
 					}

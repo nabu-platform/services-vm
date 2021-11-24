@@ -32,7 +32,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = {"id", "label", "disabled", "comment", "name", "features", "description" })
+@XmlType(propOrder = {"id", "label", "lineNumber", "disabled", "comment", "name", "features", "description" })
 abstract public class BaseStep implements Step {
 
 	/**
@@ -51,6 +51,8 @@ abstract public class BaseStep implements Step {
 	private VMService definition;
 	
 	private String label;
+	
+	private Integer lineNumber;
 	
 	private boolean isDisabled = false;
 	
@@ -114,7 +116,7 @@ abstract public class BaseStep implements Step {
 		}
 	}
 	
-	protected TypeOperation getOperation(String query) throws ParseException {
+	public TypeOperation getOperation(String query) throws ParseException {
 		if (!analyzedOperations.containsKey(query)) {
 			synchronized(analyzedOperations) {
 				if (!analyzedOperations.containsKey(query))
@@ -277,6 +279,15 @@ abstract public class BaseStep implements Step {
 	}
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	@XmlAttribute
+	@Override
+	public Integer getLineNumber() {
+		return lineNumber;
+	}
+	public void setLineNumber(Integer lineNumber) {
+		this.lineNumber = lineNumber;
 	}
 	
 }

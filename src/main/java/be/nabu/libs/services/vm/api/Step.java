@@ -43,12 +43,16 @@ public interface Step {
 	public void setDisabled(boolean isDisabled);
 	
 	@XmlAttribute
-	public void setFeatures(String features);
 	public String getFeatures();
+	public void setFeatures(String features);
 	
 	@XmlAttribute
-	public void setDescription(String description);
 	public String getDescription();
+	public void setDescription(String description);
+	
+	@XmlAttribute
+	public Integer getLineNumber();
+	public void setLineNumber(Integer lineNumber);
 	
 	/**
 	 * Refresh this step
