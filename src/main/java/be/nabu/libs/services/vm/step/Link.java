@@ -13,9 +13,11 @@ import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.types.CollectionHandlerFactory;
 import be.nabu.libs.types.ComplexContentWrapperFactory;
+import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.CollectionHandlerProvider;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.mask.MaskedContent;
 import be.nabu.libs.validator.api.Validation;
@@ -25,6 +27,7 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 @XmlType(propOrder = {"from", "to", "mask", "optional", "fixedValue"})
 public class Link extends BaseStep {
 
+	// the to can ONLY be null if we map to the full input of a service
 	private String from, to;
 
 	/**
@@ -51,6 +54,21 @@ public class Link extends BaseStep {
 		
 	}
 	
+	public void executeRootMap(ComplexContent source, ComplexContent target) throws ServiceException {
+		Object value = getFromValue(source);
+		// we want this value to be the full input
+		// however, we can't overwrite the actual target reference
+		// so instead, we clean out the target (remove all data) and map all the children from the source
+		// this has a similar effect
+		for (Element<?> child : TypeUtils.getAllChildren(target.getType())) {
+			Object childValue = value == null ? null : ((ComplexContent) value).get(child.getName());
+			if (childValue != null && childValue instanceof ComplexContent && mask) {
+				childValue = new MaskedContent((ComplexContent) childValue, (ComplexType) target.getType().get(child.getName()));
+			}
+			target.set(child.getName(), childValue);
+		}
+	}
+	
 	/**
 	 * Links elements within a single context
 	 */
@@ -74,23 +92,7 @@ public class Link extends BaseStep {
 				return;
 			}
 		}
-		Object value;
-		if (isFixedValue) {
-			// you can also pass in the explicit string "=" which will not be evaluated
-			if (from.startsWith("=") && !from.equals("=")) {
-				value = getVariable(source, from.substring(1));
-			}
-			// escape equals sign
-			else if (from.startsWith("\\=")) {
-				value = from.substring(1);
-			}
-			else {
-				value = from;
-			}
-		}
-		else {
-			value = getVariable(source, from);
-		}
+		Object value = getFromValue(source);
 		if (mask && value != null) {
 			try {
 				TypeOperation operation = getOperation(to);
@@ -135,6 +137,27 @@ public class Link extends BaseStep {
 			to, 
 			value
 		);
+	}
+
+	private Object getFromValue(ComplexContent source) throws ServiceException {
+		Object value;
+		if (isFixedValue) {
+			// you can also pass in the explicit string "=" which will not be evaluated
+			if (from.startsWith("=") && !from.equals("=")) {
+				value = getVariable(source, from.substring(1));
+			}
+			// escape equals sign
+			else if (from.startsWith("\\=")) {
+				value = from.substring(1);
+			}
+			else {
+				value = from;
+			}
+		}
+		else {
+			value = getVariable(source, from);
+		}
+		return value;
 	}
 	
 	@XmlAttribute

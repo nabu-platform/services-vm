@@ -92,7 +92,13 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().before(link);
 			}
-			link.execute(from, to);
+			// only allowed in invokes, we want to map the full root input
+			if (link.getTo() == null) {
+				link.executeRootMap(from, to);
+			}
+			else {
+				link.execute(from, to);
+			}
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
 				ServiceRuntime.getRuntime().getRuntimeTracker().after(link);
 			}
@@ -306,7 +312,8 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			messages.add(addContext(new ValidationMessage(Severity.ERROR, "Could not find service: " + serviceId)));
 		}
 		// we want to validate that mandatory input fields are mapped, let's keep it simple for now
-		else {
+		// if we map the entire input, we assume that that is valid
+		else if (!hasRootMapping()) {
 			ComplexType inputDefinition = service.getServiceInterface().getInputDefinition();
 			// the "input" is not included in the "to" path
 			validateInputMapping(inputDefinition, null, getMappedPaths(), messages);
@@ -325,6 +332,21 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		return messages;
 	}
 
+	private boolean hasRootMapping() {
+		List<Step> children2 = getChildren();
+		if (children2 != null) {
+			for (Step child : children2) {
+				if (child instanceof Link) {
+					String to = ((Link) child).getTo();
+					if (to == null) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
 	private List<String> getMappedPaths() {
 		List<Step> children2 = getChildren();
 		List<String> paths = new ArrayList<String>();
@@ -332,10 +354,12 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 			for (Step child : children2) {
 				if (child instanceof Link) {
 					String to = ((Link) child).getTo();
-					// we remove any queries or indexes, they don't matter
-					to = to.replaceAll("\\[[^\\]]+\\]", "");
-					if (!paths.contains(to)) {
-						paths.add(to);
+					if (to != null) {
+						// we remove any queries or indexes, they don't matter
+						to = to.replaceAll("\\[[^\\]]+\\]", "");
+						if (!paths.contains(to)) {
+							paths.add(to);
+						}
 					}
 				}
 			}
