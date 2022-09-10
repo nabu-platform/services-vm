@@ -62,7 +62,7 @@ public class Link extends BaseStep {
 		// this has a similar effect
 		for (Element<?> child : TypeUtils.getAllChildren(target.getType())) {
 			Object childValue = value == null ? null : ((ComplexContent) value).get(child.getName());
-			if (childValue != null && childValue instanceof ComplexContent && mask) {
+			if (childValue != null && childValue instanceof ComplexContent && mask && target.getType().get(child.getName()) instanceof ComplexType) {
 				childValue = new MaskedContent((ComplexContent) childValue, (ComplexType) target.getType().get(child.getName()));
 			}
 			target.set(child.getName(), childValue);
