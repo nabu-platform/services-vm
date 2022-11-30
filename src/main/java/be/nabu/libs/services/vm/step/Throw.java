@@ -17,7 +17,7 @@ import be.nabu.libs.validator.api.Validation;
  * @author alex
  *
  */
-@XmlType(propOrder = { "code", "message", "alias", "realm" })
+@XmlType(propOrder = { "code", "message", "alias", "realm", "authenticationId" })
 public class Throw extends BaseStep {
 	
 	public Throw() {
@@ -49,7 +49,7 @@ public class Throw extends BaseStep {
 	 * For those cases (rather few) when you throw an exception for a different user then then current token
 	 * The most notable usecase is when you throw exceptions _while_ validating the user, you throw exceptions about them but they are not currently the active user
 	 */
-	private String alias, realm;
+	private String alias, realm, authenticationId;
 	
 	@Override
 	public void execute(VMContext context) throws ServiceException {
@@ -117,8 +117,17 @@ public class Throw extends BaseStep {
 			else {
 				realm = this.realm;
 			}
+			Object authenticationId;
+			if (this.authenticationId != null && this.authenticationId.startsWith("=")) {
+				authenticationId = getVariable(context.getServiceInstance().getPipeline(), this.authenticationId.substring(1));
+			}
+			else {
+				authenticationId = this.authenticationId;
+			}
 			if (alias != null) {
-				serviceException.setToken(new ImpersonateToken(null, realm == null ? null : realm.toString(), alias == null ? null : alias.toString()));
+				ImpersonateToken token = new ImpersonateToken(null, realm == null ? null : realm.toString(), alias == null ? null : alias.toString());
+				token.setAuthenticationId(authenticationId == null ? null : authenticationId.toString());
+				serviceException.setToken(token);
 			}
 		}
 	}
@@ -171,6 +180,14 @@ public class Throw extends BaseStep {
 	}
 	public void setRealm(String realm) {
 		this.realm = realm;
+	}
+
+	@XmlAttribute
+	public String getAuthenticationId() {
+		return authenticationId;
+	}
+	public void setAuthenticationId(String authenticationId) {
+		this.authenticationId = authenticationId;
 	}
 	
 }
