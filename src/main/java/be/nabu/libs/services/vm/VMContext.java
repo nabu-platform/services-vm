@@ -14,6 +14,8 @@ public class VMContext {
 	 * Any control structure must check if it is over 0 and break if necessary (and decrease)
 	 */
 	private int breakCount = 0;
+	// when you break, do you want to continue execution, this is mostly helpful when done in a for loop?
+	private boolean continueExecution;
 	
 	private ExecutionContext executionContext;
 	
@@ -72,15 +74,24 @@ public class VMContext {
 	public int getBreakCount() {
 		return breakCount;
 	}
-	
+
+	public boolean isContinueExecution() {
+		return continueExecution;
+	}
+
+	public void setContinueExecution(boolean continueExecution) {
+		this.continueExecution = continueExecution;
+	}
+
 	public boolean mustBreak() {
 		return breakCount > 0;
 	}
 	
-	public void decreaseBreakCount() {
+	public int decreaseBreakCount() {
 		this.breakCount--;
 		if (this.breakCount < 0)
 			throw new RuntimeException("The break counter went beneath 0, this should not occur");
+		return breakCount;
 	}
 	
 	public ExecutionContext getExecutionContext() {

@@ -98,7 +98,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 					lastExecuted = child;
 					executeIfLabel(child, context);
 					if (context.mustBreak()) {
-						context.decreaseBreakCount();
+						if (context.decreaseBreakCount() == 0 && context.isContinueExecution()) {
+							continue;
+						}
 						break;
 					}
 				}

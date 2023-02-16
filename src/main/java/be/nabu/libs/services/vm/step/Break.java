@@ -3,6 +3,7 @@ package be.nabu.libs.services.vm.step;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.services.api.ServiceContext;
@@ -19,14 +20,17 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
  * Continue is not needed in most cases so a dedicated control structure seems useless. If you have nested loops, you can "break" out of the inner loops and continue the outer loop with a single statement.
  * Only if breakcount is exactly 1 will the continue be taken into account.
  */
-@XmlType(propOrder = { "count" })
+@XmlType(propOrder = { "count", "continueExecution" })
 public class Break extends BaseStep {
 
 	private int count = 1;
+	// you can break a for loop but set to continue with next iteration
+	private Boolean continueExecution;
 
 	@Override
 	public void execute(VMContext context) throws ServiceException {
 		context.setBreakCount(count);
+		context.setContinueExecution(continueExecution != null && continueExecution);
 	}
 
 	public int getCount() {
@@ -50,5 +54,12 @@ public class Break extends BaseStep {
 	@Override
 	public void refresh() {
 		// do nothing
+	}
+
+	public Boolean getContinueExecution() {
+		return continueExecution;
+	}
+	public void setContinueExecution(Boolean continueExecution) {
+		this.continueExecution = continueExecution;
 	}
 }

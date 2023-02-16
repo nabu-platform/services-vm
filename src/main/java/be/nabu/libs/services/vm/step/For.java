@@ -158,8 +158,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 					addInto(context, resultingInto);
 					// check break count
 					if (context.mustBreak()) {
-						context.decreaseBreakCount();
-						break;
+						// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+						// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+						if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+							break;
+						}
 					}
 					else if (isAborted()) {
 						break;
@@ -207,8 +210,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 					addInto(context, resultingInto);
 					// check break count
 					if (context.mustBreak()) {
-						context.decreaseBreakCount();
-						break;
+						// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+						// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+						if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+							break;
+						}
 					}
 					else if (isAborted()) {
 						break;
@@ -230,8 +236,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
-							context.decreaseBreakCount();
-							break;
+							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+								break;
+							}
 						}
 						else if (isAborted()) {
 							break;
@@ -264,8 +273,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
-								context.decreaseBreakCount();
-								break;
+								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+									break;
+								}
 							}
 							batchIndex = 0;
 							if (indexes != null) {
@@ -333,8 +345,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
-								context.decreaseBreakCount();
-								break;
+								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+									break;
+								}
 							}
 							batchIndex = 0;
 							if (indexes != null) {
@@ -391,8 +406,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							addInto(context, resultingInto);
 							// check break count
 							if (context.mustBreak()) {
-								context.decreaseBreakCount();
-								break;
+								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+									break;
+								}
 							}
 							batchIndex = 0;
 							if (indexes != null) {
@@ -444,8 +462,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
-							context.decreaseBreakCount();
-							break;
+							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+								break;
+							}
 						}
 						else if (isAborted()) {
 							break;
@@ -472,8 +493,11 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						addInto(context, resultingInto);
 						// check break count
 						if (context.mustBreak()) {
-							context.decreaseBreakCount();
-							break;
+							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+								break;
+							}
 						}
 						else if (isAborted()) {
 							break;

@@ -68,7 +68,7 @@ abstract public class BaseStep implements Step {
 	@Override
 	public String getId() {
 		if (id == null)
-			id = UUID.randomUUID().toString();
+			id = UUID.randomUUID().toString().replace("-", "");
 		return id;
 	}
 	@Override
