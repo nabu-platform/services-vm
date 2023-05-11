@@ -53,6 +53,11 @@
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-binding-xml</artifactId>
 		</dependency>
+		
+		<dependency>
+			<groupId>be.nabu.libs.cluster</groupId>
+			<artifactId>cluster-api</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>

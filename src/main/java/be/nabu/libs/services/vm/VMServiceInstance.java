@@ -54,6 +54,7 @@ public class VMServiceInstance implements ServiceInstanceWithPipeline {
 		pipeline.set(Pipeline.INPUT, input);
 		
 		VMContext context = new VMContext(executionContext, this);
+		context.setCluster(executionContext.getCluster());
 		try {
 			// run the service
 			getDefinition().getRoot().execute(context);

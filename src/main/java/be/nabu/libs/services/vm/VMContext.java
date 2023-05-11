@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.libs.cluster.api.ClusterInstance;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.vm.ManagedCloseable.Scope;
 
@@ -25,6 +26,8 @@ public class VMContext {
 			serviceCloseables = new ArrayList<Closeable>();
 	
 	private VMServiceInstance serviceInstance;
+	
+	private ClusterInstance cluster;
 	
 	public VMContext(ExecutionContext executionContext, VMServiceInstance serviceInstance) {
 		this.executionContext = executionContext;
@@ -104,5 +107,13 @@ public class VMContext {
 
 	public void setCaughtException(Exception caughtException) {
 		this.caughtException = caughtException;
+	}
+
+	public ClusterInstance getCluster() {
+		return cluster;
+	}
+
+	public void setCluster(ClusterInstance cluster) {
+		this.cluster = cluster;
 	}
 }

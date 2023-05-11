@@ -14,6 +14,9 @@ import javax.xml.bind.annotation.XmlType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.cluster.api.ClusterInstance;
+import be.nabu.libs.cluster.api.ClusterLock;
+import be.nabu.libs.cluster.local.LocalInstance;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.PipelineExtension;
@@ -35,7 +38,7 @@ import be.nabu.libs.types.properties.CommentProperty;
  *
  */
 @XmlRootElement
-@XmlType(propOrder = { "transactionVariable", "suppressException", "scopeDefaultTransaction" })
+@XmlType(propOrder = { "transactionVariable", "suppressException", "scopeDefaultTransaction", "synchronized" })
 public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 
 	private PipelineExtension pipeline;
@@ -45,6 +48,11 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 	private Boolean scopeDefaultTransaction;
 	
 	private Boolean suppressException;
+	
+	/**
+	 * You can do synchronized steps across the cluster
+	 */
+	private Boolean isSynchronized;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -85,7 +93,16 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			localDefaultTransactionId = UUID.randomUUID().toString().replace("-", "");
 			context.getExecutionContext().getTransactionContext().setDefaultTransactionId(localDefaultTransactionId);
 		}
+		ClusterLock lock = null;
 		try {
+			if (isSynchronized != null && isSynchronized) {
+				ClusterInstance cluster = context.getCluster();
+				if (cluster == null) {
+					cluster = LocalInstance.getInstance();
+				}
+				lock = cluster.lock(getId());
+				lock.lock();
+			}
 			for (Step child : getChildren()) {
 				if (child.isDisabled()) {
 					continue;
@@ -246,6 +263,9 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			}
 		}
 		finally {
+			if (lock != null) {
+				lock.unlock();
+			}
 			// in the beginning of the finally, any finally step should not be using the localized default transaction
 			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
 				context.getExecutionContext().getTransactionContext().setDefaultTransactionId(previousDefaultTransactionId);
@@ -373,4 +393,11 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 		this.suppressException = suppressException;
 	}
 	
+	@XmlAttribute
+	public Boolean getSynchronized() {
+		return isSynchronized;
+	}
+	public void setSynchronized(Boolean isSynchronized) {
+		this.isSynchronized = isSynchronized;
+	}
 }
