@@ -48,6 +48,7 @@ public class Break extends BaseStep {
 		if (count <= 0) {
 			messages.add(addContext(new ValidationMessage(Severity.ERROR, "The break count '" + count + "' is invalid")));
 		}
+		messages.addAll(super.validate(serviceContext));
 		return messages;
 	}
 
