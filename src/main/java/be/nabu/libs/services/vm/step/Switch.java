@@ -39,6 +39,10 @@ public class Switch extends BaseStepGroup implements LimitedStepGroup {
 			if (child.isDisabled()) {
 				continue;
 			}
+			// if features have disabled the step, don't continue
+			if (!isOkForFeatures(child, context)) {
+				continue;
+			}
 			// default match
 			if (child.getLabel() == null) {
 				execute(child, context);

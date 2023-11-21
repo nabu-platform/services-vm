@@ -96,7 +96,7 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 		return result;
 	}
 	
-	protected boolean executeIfLabel(Step child, VMContext context) throws ServiceException {
+	protected boolean isOkForFeatures(Step child, VMContext context) throws ServiceException {
 		Boolean execute = true;
 		if (child.getFeatures() != null && !child.getFeatures().trim().isEmpty() && context.getExecutionContext() instanceof FeaturedExecutionContext) {
 			Structure structure = childFeatures.get(child.getId());
@@ -120,6 +120,11 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 			}
 			execute = (Boolean) getVariable(instance, child.getFeatures());
 		}
+		return execute;
+	}
+	
+	protected boolean executeIfLabel(Step child, VMContext context) throws ServiceException {
+		Boolean execute = isOkForFeatures(child, context);
 		if (execute && child.getLabel() != null) {
 			Object variable = getVariable(context.getServiceInstance().getPipeline(), child.getLabel());
 			execute = variable != null ? ConverterFactory.getInstance().getConverter().convert(variable, Boolean.class) : false;
@@ -168,7 +173,7 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 		}
 		catch (Exception e) {
 			if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null) {
-				emitDescription(child, context);
+				emitDescription(child, context);	// questionable? you likely need data gathered in this step.... unless it's a throw of course!
 				ServiceRuntime.getRuntime().getRuntimeTracker().error(child, e);
 			}
 			if (e instanceof ServiceException) {

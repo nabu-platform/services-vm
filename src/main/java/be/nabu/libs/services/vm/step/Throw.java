@@ -17,7 +17,7 @@ import be.nabu.libs.validator.api.Validation;
  * @author alex
  *
  */
-@XmlType(propOrder = { "code", "message", "alias", "realm", "authenticationId" })
+@XmlType(propOrder = { "code", "message", "data", "alias", "realm", "authenticationId", "whitelist" })
 public class Throw extends BaseStep {
 	
 	public Throw() {
@@ -46,6 +46,16 @@ public class Throw extends BaseStep {
 	private String code;
 	
 	/**
+	 * You can include structured data into your exception
+	 */
+	private String data;
+	
+	/**
+	 * You can prewhitelist a code to be shown in the web application, so you don't have to centrally register it
+	 */
+	private boolean whitelist;
+	
+	/**
 	 * For those cases (rather few) when you throw an exception for a different user then then current token
 	 * The most notable usecase is when you throw exceptions _while_ validating the user, you throw exceptions about them but they are not currently the active user
 	 */
@@ -56,12 +66,21 @@ public class Throw extends BaseStep {
 		Object messageValue = null;
 		Object descriptionValue = null;
 		Object codeValue = null;
+		Object dataValue = null;
 		if (message != null) {
 			if (message.startsWith("=")) {
 				messageValue = getVariable(context.getServiceInstance().getPipeline(), message.substring(1));
 			}
 			else {
 				messageValue = message;
+			}
+		}
+		if (data != null) {
+			if (data.startsWith("=")) {
+				dataValue = getVariable(context.getServiceInstance().getPipeline(), data.substring(1));
+			}
+			else {
+				dataValue = data;
 			}
 		}
 		String description = getDescription();
@@ -83,18 +102,36 @@ public class Throw extends BaseStep {
 		}
 		// if we have a service exception and we don't want to add a code to it, just rethrow
 		if (messageValue instanceof ServiceException && codeValue == null && descriptionValue == null && alias == null) {
+			if (whitelist) {
+				((ServiceException) messageValue).setWhitelisted(whitelist);
+			}
+			if (dataValue != null) {
+				((ServiceException) messageValue).setData(dataValue);
+			}
 			throw ((ServiceException) messageValue);
 		}
 		// any other exception is wrapped
 		else if (messageValue instanceof Exception) {
 			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), (String) null, (Exception) messageValue);
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
+			if (whitelist) {
+				serviceException.setWhitelisted(whitelist);
+			}
+			if (dataValue != null) {
+				serviceException.setData(dataValue);
+			}
 			enrichToken(context, serviceException);
 			throw serviceException;
 		}
 		else {
 			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString(), context.getCaughtException());
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
+			if (whitelist) {
+				serviceException.setWhitelisted(whitelist);
+			}
+			if (dataValue != null) {
+				serviceException.setData(dataValue);
+			}
 			enrichToken(context, serviceException);
 			throw serviceException;
 		}
@@ -130,6 +167,14 @@ public class Throw extends BaseStep {
 				serviceException.setToken(token);
 			}
 		}
+	}
+	
+	@XmlAttribute
+	public boolean isWhitelist() {
+		return whitelist;
+	}
+	public void setWhitelist(boolean whitelist) {
+		this.whitelist = whitelist;
 	}
 
 	@Override
@@ -188,6 +233,14 @@ public class Throw extends BaseStep {
 	}
 	public void setAuthenticationId(String authenticationId) {
 		this.authenticationId = authenticationId;
+	}
+
+	@XmlAttribute
+	public String getData() {
+		return data;
+	}
+	public void setData(String data) {
+		this.data = data;
 	}
 	
 }
