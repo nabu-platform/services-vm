@@ -16,9 +16,11 @@ import be.nabu.libs.artifacts.ArtifactUtils;
 import be.nabu.libs.artifacts.ExceptionDescriptionImpl;
 import be.nabu.libs.artifacts.FeatureImpl;
 import be.nabu.libs.artifacts.api.ArtifactWithExceptions;
+import be.nabu.libs.artifacts.api.ArtifactWithTodo;
 import be.nabu.libs.artifacts.api.ExceptionDescription;
 import be.nabu.libs.artifacts.api.ExceptionDescription.ExceptionType;
 import be.nabu.libs.artifacts.api.Feature;
+import be.nabu.libs.artifacts.api.Todo;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.DefinedServiceInterface;
@@ -46,7 +48,7 @@ import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.types.properties.AspectProperty;
 import be.nabu.libs.types.properties.CollectionHandlerProviderProperty;
 
-public class SimpleVMServiceDefinition implements VMService, ArtifactWithExceptions {
+public class SimpleVMServiceDefinition implements VMService, ArtifactWithExceptions, ArtifactWithTodo {
 
 	private ComplexType input, output;
 	private Sequence root;
@@ -325,6 +327,36 @@ public class SimpleVMServiceDefinition implements VMService, ArtifactWithExcepti
 		descriptions.add(new ExceptionDescriptionImpl("VM-10", "VM-10", "Link is missing 'to'", "The link does not have a to value", ExceptionType.DESIGN));
 		descriptions.add(new ExceptionDescriptionImpl("VM-11", "VM-11", "Batch size is not a number", "The configured batch size is not a number or does not resolve to a number", ExceptionType.DESIGN));
 		return descriptions;
+	}
+
+	@Override
+	public List<Todo> getTodos() {
+		List<Todo> todos = new ArrayList<Todo>();
+		if (getDescription() != null) {
+			todos.addAll(ArtifactUtils.scanForTodos(getId(), getDescription()));
+		}
+		scanTodo(getRoot(), todos);
+		return todos;
+	}
+	private void scanTodo(StepGroup group, List<Todo> todos) {
+		// we want to scan the root sequence as well
+		scanTodoStep(group, todos);
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				scanTodo((StepGroup) child, todos);
+			}
+			else {
+				scanTodoStep(child, todos);
+			}
+		}
+	}
+	private void scanTodoStep(Step step, List<Todo> todos) {
+		if (step.getComment() != null) {
+			todos.addAll(ArtifactUtils.scanForTodos(getId() + ":" + step.getId(), step.getComment()));
+		}
+		if (step.getDescription() != null) {
+			todos.addAll(ArtifactUtils.scanForTodos(getId() + ":" + step.getId(), step.getDescription()));
+		}
 	}
 
 }
