@@ -1,12 +1,13 @@
 package be.nabu.libs.services.vm.api;
 
+import be.nabu.libs.artifacts.api.ArtifactWithTodo;
 import be.nabu.libs.artifacts.api.FeaturedArtifact;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.api.TypeInstance;
 
-public interface VMService extends DefinedService, FeaturedArtifact {
+public interface VMService extends DefinedService, FeaturedArtifact, ArtifactWithTodo {
 	public Sequence getRoot();
 	public Pipeline getPipeline();
 	

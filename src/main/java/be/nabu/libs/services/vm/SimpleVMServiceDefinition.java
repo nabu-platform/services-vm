@@ -16,7 +16,6 @@ import be.nabu.libs.artifacts.ArtifactUtils;
 import be.nabu.libs.artifacts.ExceptionDescriptionImpl;
 import be.nabu.libs.artifacts.FeatureImpl;
 import be.nabu.libs.artifacts.api.ArtifactWithExceptions;
-import be.nabu.libs.artifacts.api.ArtifactWithTodo;
 import be.nabu.libs.artifacts.api.ExceptionDescription;
 import be.nabu.libs.artifacts.api.ExceptionDescription.ExceptionType;
 import be.nabu.libs.artifacts.api.Feature;
@@ -48,7 +47,7 @@ import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.types.properties.AspectProperty;
 import be.nabu.libs.types.properties.CollectionHandlerProviderProperty;
 
-public class SimpleVMServiceDefinition implements VMService, ArtifactWithExceptions, ArtifactWithTodo {
+public class SimpleVMServiceDefinition implements VMService, ArtifactWithExceptions {
 
 	private ComplexType input, output;
 	private Sequence root;
