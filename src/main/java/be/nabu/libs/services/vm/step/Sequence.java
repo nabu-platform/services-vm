@@ -19,6 +19,7 @@ import be.nabu.libs.cluster.api.ClusterLock;
 import be.nabu.libs.cluster.local.LocalInstance;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
+import be.nabu.libs.services.impl.TransactionReport;
 import be.nabu.libs.services.vm.PipelineExtension;
 import be.nabu.libs.services.vm.VMContext;
 import be.nabu.libs.services.vm.api.Step;
@@ -128,17 +129,21 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			if (transactionId != null) {
 				if (isAborted()) {
 					context.getExecutionContext().getTransactionContext().rollback(transactionId);
+					reportData(new TransactionReport(transactionId, "rollback"));
 				}
 				else {
 					context.getExecutionContext().getTransactionContext().commit(transactionId);
+					reportData(new TransactionReport(transactionId, "commit"));
 				}
 			}
 			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
 				if (isAborted()) {
 					context.getExecutionContext().getTransactionContext().rollback(localDefaultTransactionId);
+					reportData(new TransactionReport(localDefaultTransactionId, "rollback"));
 				}
 				else {
 					context.getExecutionContext().getTransactionContext().commit(localDefaultTransactionId);
+					reportData(new TransactionReport(localDefaultTransactionId, "commit"));
 				}
 			}
 		}
@@ -148,6 +153,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			if (transactionId != null) {
 				try {
 					context.getExecutionContext().getTransactionContext().rollback(transactionId);
+					reportData(new TransactionReport(transactionId, "rollback"));
 				}
 				catch (Exception f) {
 					logger.warn("Could not rollback transaction context during sequence exception handling", f);
@@ -156,6 +162,7 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
 				try {
 					context.getExecutionContext().getTransactionContext().rollback(localDefaultTransactionId);
+					reportData(new TransactionReport(localDefaultTransactionId, "rollback"));
 				}
 				catch (Exception f) {
 					logger.warn("Could not rollback default transaction context during sequence exception handling", f);

@@ -17,6 +17,7 @@ import be.nabu.libs.evaluator.impl.VariableOperation;
 import be.nabu.libs.evaluator.types.api.TypeOperation;
 import be.nabu.libs.evaluator.types.operations.TypeVariableOperation;
 import be.nabu.libs.evaluator.types.operations.TypesOperationProvider;
+import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.api.Step;
@@ -225,6 +226,12 @@ abstract public class BaseStep implements Step {
 		this.isDisabled = isDisabled;
 	}
 
+	protected void reportData(Object data) {
+		if (ServiceRuntime.getRuntime() != null && ServiceRuntime.getRuntime().getRuntimeTracker() != null && data != null) {
+			ServiceRuntime.getRuntime().getRuntimeTracker().report(data);
+		}
+	}
+	
 	@Override
 	public List<Validation<?>> validate(ServiceContext serviceContext) {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();

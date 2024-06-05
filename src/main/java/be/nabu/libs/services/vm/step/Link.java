@@ -101,7 +101,8 @@ public class Link extends BaseStep {
 					throw new ServiceException("VM-7", "Can only mask complex types");
 				}
 				CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
-				if (collectionHandler != null) {
+				// @2024-05-02 a map should be handled like complex content...
+				if (collectionHandler != null && !(value instanceof Map)) {
 					Collection indexes = collectionHandler.getIndexes(value);
 					Object newCollection = collectionHandler.create(value.getClass(), indexes.size());
 					for (Object index : indexes) {
