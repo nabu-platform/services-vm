@@ -102,7 +102,8 @@ public class Link extends BaseStep {
 				}
 				CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
 				// @2024-05-02 a map should be handled like complex content...
-				if (collectionHandler != null && !(value instanceof Map)) {
+				// @2024-10-04 it was still not being handled correctly because of the wrong map type......... not sure what the original usecase was because it was evidently not solved
+				if (collectionHandler != null && !(value instanceof java.util.Map)) {
 					Collection indexes = collectionHandler.getIndexes(value);
 					Object newCollection = collectionHandler.create(value.getClass(), indexes.size());
 					for (Object index : indexes) {
