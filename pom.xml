@@ -1,18 +1,15 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>be.nabu.libs.services</groupId>
 	<artifactId>services-vm</artifactId>
 	<packaging>jar</packaging>
-	<version>${be.nabu.libs.services-services-vm-version}</version>
+	<version>1.13-SNAPSHOT</version>
 	<name>services-vm</name>
-
 	<parent>
 		<groupId>be.nabu</groupId>
 		<artifactId>core</artifactId>
 		<version>1.0-SNAPSHOT</version>
 	</parent>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -25,7 +22,6 @@
 			</plugin>
 		</plugins>
 	</build>
-
 	<dependencies>
 		<dependency>
 			<groupId>be.nabu.libs.evaluator</groupId>
@@ -39,8 +35,6 @@
 			<groupId>be.nabu.libs.services</groupId>
 			<artifactId>services-api</artifactId>
 		</dependency>
-
-		<!-- for serialization -->
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-java</artifactId>
@@ -53,12 +47,10 @@
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-binding-xml</artifactId>
 		</dependency>
-		
 		<dependency>
 			<groupId>be.nabu.libs.cluster</groupId>
 			<artifactId>cluster-api</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
