@@ -126,12 +126,16 @@ public class Throw extends BaseStep {
 				((ServiceException) messageValue).setData(dataValue);
 			}
 			((ServiceException) messageValue).setExplicit(true);
+			if (((ServiceException) messageValue).getSourceId() == null) {
+				((ServiceException) messageValue).setSourceId(getId());
+			}
 			throw ((ServiceException) messageValue);
 		}
 		// any other exception is wrapped
 		else if (messageValue instanceof Exception) {
 			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), (String) null, (Exception) messageValue);
 			serviceException.setExplicit(true);
+			serviceException.setSourceId(getId());
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
 			if (whitelist) {
 				serviceException.setWhitelisted(whitelist);
@@ -145,6 +149,7 @@ public class Throw extends BaseStep {
 		else {
 			ServiceException serviceException = new ServiceException(codeValue == null ? null : codeValue.toString(), messageValue == null ? "No message" : messageValue.toString(), context.getCaughtException());
 			serviceException.setExplicit(true);
+			serviceException.setSourceId(getId());
 			serviceException.setDescription(descriptionValue == null ? null : descriptionValue.toString());
 			if (whitelist) {
 				serviceException.setWhitelisted(whitelist);
