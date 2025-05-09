@@ -140,6 +140,27 @@ abstract public class BaseStepGroup extends BaseStep implements StepGroup {
 		return execute;
 	}
 	
+	/**
+	 * @2025-05-07: An often used shorthand when defining a condition on a step is for example "myDocuments".
+	 * What you actually mean is "myDocuments != null".
+	 * This works because when we calculate the condition we force the result to be cast to a boolean. At this point the IterableToBoolean converter kicks in and will return "true" if there is _anything_ not null in the list and "false" if it has no elements or they are all null.
+	 * Most notably however, if you have an array of say [false, false], it will still return "true" because there is _something_ in the array rather than nothing.
+	 * But we normally only use the shorthand on a single structure or a list of structures so it does work as you would intuitively think rather than bumping into that dubious [false, false] problem.
+	 * It becomes interesting however when you write this:
+	 * 
+	 * myDocuments && false
+	 * 
+	 * Assume that myDocuments is a LIST of structures WITH content in them. Intuitively you would think it states "true && false" and return false.
+	 * However, when the condition is cast to boolean, it will state "true".
+	 * This is because operator overloading is by default turned on at which point the IterableOperationExecutor kicks in, it does not evaluate "myDocuments != null && false" as you might think
+	 * Instead it will rewrite myDocuments && false to an array of boolean results where each separate instance of the documents array is converted to a boolean anded with false.
+	 * This _will_ result in something like [false, false] at which point we come to our very unintuitive casting issue when forcing this array to a boolean.
+	 * This means it will return true.
+	 * 
+	 * Because glue is pretty much always loaded in nabu, the iterabletoboolean is always loaded. This is a system wide load so it is hard to differentiate between glue and nabu contexts.
+	 * However, given the current limited use of operator overloading and the potentially invisible consequences, it might go against the nabu "intention" of readability and predictability (even in the face of adding random libraries).
+	 * So it is perhaps better to disable operator overloading alltogether in nabu. Booleans to accomplish this have been added to ClassicOperation (which does the operation overloading with its operation executors).
+	 */
 	protected boolean executeIfLabel(Step child, VMContext context) throws ServiceException {
 		Boolean execute = isOkForFeatures(child, context);
 		if (execute && child.getLabel() != null) {

@@ -138,7 +138,7 @@ abstract public class BaseStep implements Step {
 		if (!analyzedOperations.containsKey(query)) {
 			synchronized(analyzedOperations) {
 				if (!analyzedOperations.containsKey(query))
-					analyzedOperations.put(query, (TypeOperation) new PathAnalyzer<ComplexContent>(new TypesOperationProvider()).analyze(QueryParser.getInstance().parse(query)));
+					analyzedOperations.put(query, (TypeOperation) new PathAnalyzer<ComplexContent>(new TypesOperationProvider(false)).analyze(QueryParser.getInstance().parse(query)));
 			}
 		}
 		return analyzedOperations.get(query);
