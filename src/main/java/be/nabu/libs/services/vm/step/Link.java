@@ -41,7 +41,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = {"from", "to", "mask", "optional", "fixedValue"})
+@XmlType(propOrder = {"from", "to", "mask", "optional", "patch", "fixedValue"})
 public class Link extends BaseStep {
 
 	// the to can ONLY be null if we map to the full input of a service
@@ -56,6 +56,11 @@ public class Link extends BaseStep {
 	 * If this is set, we only assign it if the target is null
 	 */
 	private boolean isOptional = false;
+	
+	/**
+	 * If this is set, we only assign it if the source has an explicit value
+	 */
+	private boolean isPatch = false;
 	
 	/**
 	 * Whether or not to mask the content we set, allowing for non-type equivalent sets
@@ -106,6 +111,12 @@ public class Link extends BaseStep {
 		if (isOptional) {
 			Object currentValue = getVariable(target, to);
 			if (currentValue != null) {
+				return;
+			}
+		}
+		if (isPatch) {
+			// if the from is undefined, don't do anything!
+			if (isFromUndefined(source)) {
 				return;
 			}
 		}
@@ -179,6 +190,17 @@ public class Link extends BaseStep {
 		return value;
 	}
 	
+	private boolean isFromUndefined(ComplexContent source) throws ServiceException {
+		// can't be undefined if it's a fixed value
+		if (isFixedValue) {
+			return false;
+		}
+		else {
+			Object variable = getVariable(source, from + " == undefined");
+			return variable instanceof Boolean && ((Boolean) variable) == true;
+		}
+	}
+	
 	@XmlAttribute
 	public boolean isFixedValue() {
 		return isFixedValue;
@@ -213,6 +235,15 @@ public class Link extends BaseStep {
 		this.isOptional = isOptional;
 	}
 	
+	@XmlAttribute
+	public boolean isPatch() {
+		return isPatch;
+	}
+
+	public void setPatch(boolean isPatch) {
+		this.isPatch = isPatch;
+	}
+
 	@XmlAttribute
 	public boolean isMask() {
 		return mask;
