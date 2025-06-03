@@ -34,7 +34,7 @@ public class Drop extends BaseStep {
 	
 	@Override
 	public void execute(VMContext context) throws ServiceException {
-		setVariable(context.getServiceInstance().getPipeline(), path, null);
+		deleteVariable(context.getServiceInstance().getPipeline(), path);
 	}
 
 	@Override

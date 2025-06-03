@@ -133,6 +133,22 @@ abstract public class BaseStep implements Step {
 			VariableOperation.unregisterRoot();
 		}
 	}
+	public void deleteVariable(ComplexContent pipeline, String query) throws ServiceException {
+		VariableOperation.registerRoot();
+		try {
+			TypeOperation operation = getOperation(query);
+			if (!(operation instanceof TypeVariableOperation))
+				throw new ServiceException("VM-1", "When setting you can only use variable operations");
+			String path = ((TypeVariableOperation) operation).resolve(pipeline);
+			pipeline.delete(path);
+		}
+		catch (Exception e) {
+			throw new ServiceException("VM-12", "Could not delete '" + query + "' in pipeline", e);
+		}
+		finally {
+			VariableOperation.unregisterRoot();
+		}
+	}
 	
 	public TypeOperation getOperation(String query) throws ParseException {
 		if (!analyzedOperations.containsKey(query)) {
