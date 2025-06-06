@@ -41,7 +41,14 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-@XmlType(propOrder = {"from", "to", "mask", "optional", "patch", "fixedValue"})
+/**
+ * @2025-06-04: I updated some primitive booleans to boolean objects
+ * The primary reason for this is for them not to have a default value so they don't show in the XML, this has a few advantages:
+ * - smaller XML if not set
+ * - resaving an existing service with an added primitive boolean would suddenly create a massive change set where nothing actually changed functionally
+ * - backwards compatible with older versions that don't have the boolean
+ */
+@XmlType(propOrder = {"from", "to", "mask", "optional", "patch", "fixedValue", "sourceNotNull"})
 public class Link extends BaseStep {
 
 	// the to can ONLY be null if we map to the full input of a service
@@ -55,17 +62,22 @@ public class Link extends BaseStep {
 	/**
 	 * If this is set, we only assign it if the target is null
 	 */
-	private boolean isOptional = false;
+	private Boolean optional;
 	
 	/**
-	 * If this is set, we only assign it if the source has an explicit value
+	 * If this is set, we only assign it IF the source has a non null value
 	 */
-	private boolean isPatch = false;
+	private Boolean sourceNotNull;
+	
+	/**
+	 * If this is set, we only assign it if the source has an explicit value (!= undefined)
+	 */
+	private Boolean patch;
 	
 	/**
 	 * Whether or not to mask the content we set, allowing for non-type equivalent sets
 	 */
-	private boolean mask;
+	private Boolean mask;
 	
 	public Link(String from, String to) {
 		setFrom(from);
@@ -84,7 +96,7 @@ public class Link extends BaseStep {
 		// this has a similar effect
 		for (Element<?> child : TypeUtils.getAllChildren(target.getType())) {
 			Object childValue = value == null ? null : ((ComplexContent) value).get(child.getName());
-			if (childValue != null && childValue instanceof ComplexContent && mask && target.getType().get(child.getName()) instanceof ComplexType) {
+			if (childValue != null && childValue instanceof ComplexContent && mask != null && mask && target.getType().get(child.getName()) instanceof ComplexType) {
 				childValue = new MaskedContent((ComplexContent) childValue, (ComplexType) target.getType().get(child.getName()));
 			}
 			target.set(child.getName(), childValue);
@@ -108,20 +120,24 @@ public class Link extends BaseStep {
 			throw new ServiceException("VM-10", "Missing link to variable");
 		}
 		// if it's optional, first check whether the "to" is null
-		if (isOptional) {
+		if (optional != null && optional) {
 			Object currentValue = getVariable(target, to);
 			if (currentValue != null) {
 				return;
 			}
 		}
-		if (isPatch) {
+		if (patch != null && patch) {
 			// if the from is undefined, don't do anything!
 			if (isFromUndefined(source)) {
 				return;
 			}
 		}
 		Object value = getFromValue(source);
-		if (mask && value != null) {
+		// if we only want to map non-null values, don't proceed if it is null
+		if (sourceNotNull != null && sourceNotNull && value == null) {
+			return;
+		}
+		if (mask != null && mask && value != null) {
 			try {
 				TypeOperation operation = getOperation(to);
 				Type returnType = operation.getReturnType(target.getType());
@@ -227,29 +243,36 @@ public class Link extends BaseStep {
 	}
 	
 	@XmlAttribute
-	public boolean isOptional() {
-		return isOptional;
+	public Boolean getOptional() {
+		return optional;
 	}
-
-	public void setOptional(boolean isOptional) {
-		this.isOptional = isOptional;
-	}
-	
-	@XmlAttribute
-	public boolean isPatch() {
-		return isPatch;
-	}
-
-	public void setPatch(boolean isPatch) {
-		this.isPatch = isPatch;
+	public void setOptional(Boolean optional) {
+		this.optional = optional;
 	}
 
 	@XmlAttribute
-	public boolean isMask() {
+	public Boolean getPatch() {
+		return patch;
+	}
+	public void setPatch(Boolean patch) {
+		this.patch = patch;
+	}
+
+	@XmlAttribute
+	public Boolean getMask() {
 		return mask;
 	}
-	public void setMask(boolean mask) {
+
+	public void setMask(Boolean mask) {
 		this.mask = mask;
+	}
+
+	@XmlAttribute
+	public Boolean getSourceNotNull() {
+		return sourceNotNull;
+	}
+	public void setSourceNotNull(Boolean sourceNotNull) {
+		this.sourceNotNull = sourceNotNull;
 	}
 
 	@Override
