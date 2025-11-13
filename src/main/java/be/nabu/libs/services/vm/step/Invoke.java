@@ -298,7 +298,12 @@ public class Invoke extends BaseStepGroup implements LimitedStepGroup {
 		if (resultName == null) {
 			// the uuid can generate strings that start with a number
 			// these are not identified as valid targets by the query engine so prepend with a fixed part
-			resultName = "result" + UUID.randomUUID().toString().replace("-", "");
+//			resultName = "result" + UUID.randomUUID().toString().replace("-", "");
+			// @20205-11-07 it's better to use the id of the step itself, this also makes it more predictable if it is accidently ommitted
+			// note that when we copy it, the same result name is actually used, but this was already the case before
+			// this doesn't matter _too_ much because we are sequentially reusing it and with the exact same type
+			// but still interesting...
+			resultName = "result" + getId();
 		}
 		return resultName;
 	}
