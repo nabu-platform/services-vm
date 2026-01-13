@@ -288,7 +288,12 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 		}
 		finally {
 			if (lock != null) {
-				lock.unlock();
+				try {
+					lock.unlock();
+				}
+				catch (Exception e) {
+					logger.error("Could not unlock sequence", e);
+				}
 			}
 			// in the beginning of the finally, any finally step should not be using the localized default transaction
 			if (scopeDefaultTransaction != null && scopeDefaultTransaction) {
