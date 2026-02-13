@@ -36,13 +36,15 @@ import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.Validation;
 
-@XmlType(propOrder = { "variable", "suppressException", "types", "codes" })
+@XmlType(propOrder = { "variable", "suppressException", "types", "codes", "stacktraceRegex" })
 public class Catch extends BaseStepGroup implements LimitedStepGroup {
 
 	private List<String> codes;
 	private List<Class<? extends Exception>> types;
 	private String variable;
 	private Boolean suppressException;
+	// check to see if the stack trace matches a specific regex
+	private String stacktraceRegex;
 	
 	private PipelineExtension pipeline;
 
@@ -176,5 +178,13 @@ public class Catch extends BaseStepGroup implements LimitedStepGroup {
 	@Override
 	public void refresh() {
 		pipeline = null;
+	}
+	
+	@XmlAttribute
+	public String getStacktraceRegex() {
+		return stacktraceRegex;
+	}
+	public void setStacktraceRegex(String stacktraceRegex) {
+		this.stacktraceRegex = stacktraceRegex;
 	}
 }

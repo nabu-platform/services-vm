@@ -17,6 +17,8 @@
 
 package be.nabu.libs.services.vm.step;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -202,8 +204,28 @@ public class Sequence extends BaseStepGroup implements LimitedStepGroup {
 				}
 				else if (child instanceof Catch) {
 					Catch catchClause = (Catch) child;
-					if (catchClause.getTypes().size() == 0 && (catchClause.getCodes() == null || catchClause.getCodes().isEmpty()))
+					if (catchClause.getTypes().size() == 0 && (catchClause.getCodes() == null || catchClause.getCodes().isEmpty()) && catchClause.getStacktraceRegex() == null)
 						defaultCatchClause = catchClause;
+					// stacktrace match takes prio
+					else if (catchClause.getStacktraceRegex() != null) {
+						StringWriter writer = new StringWriter();
+						PrintWriter printer = new PrintWriter(writer);
+						e.printStackTrace(printer);
+						printer.flush();
+						String content = writer.toString();
+						// always do the multiline matching?
+						// not sure if there is ever a usecase where you don't want this? if so, we need to make this smarter
+						if (content.matches("(?s)" + catchClause.getStacktraceRegex())) {
+							matchFound = true;
+							context.setCaughtException(e);
+							executeIfLabel(catchClause, context);
+							context.setCaughtException(null);
+							// if we have successfully handled the catch check if we should suppress the exception from the log
+							if (catchClause.getSuppressException() != null && catchClause.getSuppressException()) {
+								logException = false;
+							}
+						}
+					}
 					// if we have codes, they get precedence
 					else if (!catchClause.getCodes().isEmpty()) {
 						if (hasAnyCode(e, catchClause.getCodes())) {
