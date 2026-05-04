@@ -30,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.libs.evaluator.types.api.TypeOperation;
+import be.nabu.libs.services.ExecutionFlag;
+import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.vm.PipelineExtension;
@@ -113,141 +115,121 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public void execute(VMContext context) throws ServiceException {
-		Object value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
-		if (value != null) {
-			Object batchSize = this.batchSize == null ? null : getVariable(context.getServiceInstance().getPipeline(), this.batchSize);
-			
-			Object resultingInto = null;
-			
-			if (into != null) {
-				resultingInto = getVariable(context.getServiceInstance().getPipeline(), into);
-				if (resultingInto == null) {
-					resultingInto = new ArrayList();
-				}
-				else if (!(resultingInto instanceof List)) {
-					List list = new ArrayList();
-					addInto(list, resultingInto);
-					resultingInto = list;
-				}
-				// set the into to null so we can start creating sublists
-				setVariable(context.getServiceInstance().getPipeline(), into, null);
+		Runnable pushExecutionFlags = null;
+		try {
+			ServiceRuntime runtime = ServiceRuntime.getRuntime();
+			if (runtime != null) {
+				pushExecutionFlags = ServiceRuntime.getRuntime().pushExecutionFlags(ExecutionFlag.LOOP);
 			}
+			Object value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
+			if (value != null) {
+				Object batchSize = this.batchSize == null ? null : getVariable(context.getServiceInstance().getPipeline(), this.batchSize);
 				
-			long increment = batchSize instanceof Number ? ((Number) batchSize).longValue() : 1;
-			// if we have a boolean, we execute until it is not true
-			if (value instanceof Boolean) {
-				// if we have a batch size, we start at that point, e.g. if you set 5, you immediately start with index 4
-				long index = increment - 1;
-				while (value instanceof Boolean && (Boolean) value) {
-					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-					
-					// now set the variables (if applicable)
-					if (indexName != null) {
-						// if the definition exists, we created a list of this
-						if (this.batchSize != null) {
-							List list = new ArrayList();
-							// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
-							for (long i = index - increment + 1; i <= index; i++) {
-								list.add(i);
-							}
-							setVariable(context.getServiceInstance().getPipeline(), indexName, list);
-						}
-						else {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, index);
-						}
+				Object resultingInto = null;
+				
+				if (into != null) {
+					resultingInto = getVariable(context.getServiceInstance().getPipeline(), into);
+					if (resultingInto == null) {
+						resultingInto = new ArrayList();
 					}
-					if (variable != null) {
-						// if the definition exists, we created a list of this
-						if (this.batchSize != null) {
-							List list = new ArrayList();
-							// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
-							for (long i = index - increment + 1; i <= index; i++) {
-								list.add(value);
-							}
-							setVariable(context.getServiceInstance().getPipeline(), variable, list);
-						}
-						else {
-							setVariable(context.getServiceInstance().getPipeline(), variable, value);
-						}
+					else if (!(resultingInto instanceof List)) {
+						List list = new ArrayList();
+						addInto(list, resultingInto);
+						resultingInto = list;
 					}
-					executeSteps(context);
-					// do it _before_ we check for break
-					addInto(context, resultingInto);
-					// check break count
-					if (context.mustBreak()) {
-						// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-						// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-						if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
-							break;
-						}
-					}
-					else if (isAborted()) {
-						break;
-					}
-					// evaluate it again
-					value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
-					index += increment;
+					// set the into to null so we can start creating sublists
+					setVariable(context.getServiceInstance().getPipeline(), into, null);
 				}
-			}
-			else if (value instanceof Number) {
-				long longValue = ((Number) value).longValue();
-				for (long i = increment - 1; i < longValue; i += Math.min(increment, longValue - i)) {
-					context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
 					
-					// now set the variables (if applicable)
-					if (indexName != null) {
-						// if the definition exists, we created a list of this
-						if (this.batchSize != null) {
-							List list = new ArrayList();
-							// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
-							for (long j = i - increment + 1; j <= i; j++) {
-								list.add(j);
-							}
-							setVariable(context.getServiceInstance().getPipeline(), indexName, list);
-						}
-						else {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, i);
-						}
-					}
-					if (variable != null) {
-						// if the definition exists, we created a list of this
-						if (this.batchSize != null) {
-							List list = new ArrayList();
-							// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
-							for (long j = i - increment + 1; j <= i; j++) {
-								list.add(j);
-							}
-							setVariable(context.getServiceInstance().getPipeline(), variable, list);
-						}
-						else {
-							setVariable(context.getServiceInstance().getPipeline(), variable, i);
-						}
-					}
-					executeSteps(context);
-					addInto(context, resultingInto);
-					// check break count
-					if (context.mustBreak()) {
-						// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-						// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-						if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
-							break;
-						}
-					}
-					else if (isAborted()) {
-						break;
-					}
-				}
-			}
-			else if (value instanceof Iterable) {
-				long index = 0;
-				if (this.batchSize == null) {
-					for (Object single : (Iterable) value) {
+				long increment = batchSize instanceof Number ? ((Number) batchSize).longValue() : 1;
+				// if we have a boolean, we execute until it is not true
+				if (value instanceof Boolean) {
+					// if we have a batch size, we start at that point, e.g. if you set 5, you immediately start with index 4
+					long index = increment - 1;
+					while (value instanceof Boolean && (Boolean) value) {
 						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+						
+						// now set the variables (if applicable)
 						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
+							// if the definition exists, we created a list of this
+							if (this.batchSize != null) {
+								List list = new ArrayList();
+								// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
+								for (long i = index - increment + 1; i <= index; i++) {
+									list.add(i);
+								}
+								setVariable(context.getServiceInstance().getPipeline(), indexName, list);
+							}
+							else {
+								setVariable(context.getServiceInstance().getPipeline(), indexName, index);
+							}
 						}
 						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, single);
+							// if the definition exists, we created a list of this
+							if (this.batchSize != null) {
+								List list = new ArrayList();
+								// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
+								for (long i = index - increment + 1; i <= index; i++) {
+									list.add(value);
+								}
+								setVariable(context.getServiceInstance().getPipeline(), variable, list);
+							}
+							else {
+								setVariable(context.getServiceInstance().getPipeline(), variable, value);
+							}
+						}
+						executeSteps(context);
+						// do it _before_ we check for break
+						addInto(context, resultingInto);
+						// check break count
+						if (context.mustBreak()) {
+							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+								break;
+							}
+						}
+						else if (isAborted()) {
+							break;
+						}
+						// evaluate it again
+						value = getVariable(context.getServiceInstance().getPipeline(), getQuery());
+						index += increment;
+					}
+				}
+				else if (value instanceof Number) {
+					long longValue = ((Number) value).longValue();
+					for (long i = increment - 1; i < longValue; i += Math.min(increment, longValue - i)) {
+						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+						
+						// now set the variables (if applicable)
+						if (indexName != null) {
+							// if the definition exists, we created a list of this
+							if (this.batchSize != null) {
+								List list = new ArrayList();
+								// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
+								for (long j = i - increment + 1; j <= i; j++) {
+									list.add(j);
+								}
+								setVariable(context.getServiceInstance().getPipeline(), indexName, list);
+							}
+							else {
+								setVariable(context.getServiceInstance().getPipeline(), indexName, i);
+							}
+						}
+						if (variable != null) {
+							// if the definition exists, we created a list of this
+							if (this.batchSize != null) {
+								List list = new ArrayList();
+								// if batch size is 5, the index is 4, 9,... and we want a list of [0-4], [5-9]...
+								for (long j = i - increment + 1; j <= i; j++) {
+									list.add(j);
+								}
+								setVariable(context.getServiceInstance().getPipeline(), variable, list);
+							}
+							else {
+								setVariable(context.getServiceInstance().getPipeline(), variable, i);
+							}
 						}
 						executeSteps(context);
 						addInto(context, resultingInto);
@@ -264,21 +246,150 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 						}
 					}
 				}
-				else {
+				else if (value instanceof Iterable) {
+					long index = 0;
+					if (this.batchSize == null) {
+						for (Object single : (Iterable) value) {
+							context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+							if (indexName != null) {
+								setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
+							}
+							if (variable != null) {
+								setVariable(context.getServiceInstance().getPipeline(), variable, single);
+							}
+							executeSteps(context);
+							addInto(context, resultingInto);
+							// check break count
+							if (context.mustBreak()) {
+								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+									break;
+								}
+							}
+							else if (isAborted()) {
+								break;
+							}
+						}
+					}
+					else {
+						List indexes = indexName != null ? new ArrayList() : null;
+						List values = variable != null ? new ArrayList() : null;
+						long batchIndex = 0;
+						for (Object single : (Iterable) value) {
+							// always add it to the list
+							if (indexes != null) {
+								indexes.add(index++);
+							}
+							if (values != null) {
+								values.add(single);
+							}
+							batchIndex++;
+							// if we have reached the increment size, we run it
+							if (batchIndex == increment) {
+								context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+								if (indexName != null) {
+									setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
+								}
+								if (variable != null) {
+									setVariable(context.getServiceInstance().getPipeline(), variable, values);
+								}
+								executeSteps(context);
+								addInto(context, resultingInto);
+								// check break count
+								if (context.mustBreak()) {
+									// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+									// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+									if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+										break;
+									}
+								}
+								batchIndex = 0;
+								if (indexes != null) {
+									indexes.clear();
+								}
+								if (values != null) {
+									values.clear();
+								}
+							}
+							if (isAborted()) {
+								break;
+							}
+						}
+						// we have remaining in the batch...
+						if (batchIndex > 0) {
+							context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+							if (indexName != null) {
+								setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
+							}
+							if (variable != null) {
+								setVariable(context.getServiceInstance().getPipeline(), variable, values);
+							}
+							executeSteps(context);
+							addInto(context, resultingInto);
+						}
+					}
+				}
+				// shameless copy of the else {} adapted to work with batches...
+				// should probably be refactored at some point...
+				else if (this.batchSize != null) {
+					CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
+					if (collectionHandler == null) {
+						throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
+					}
+					Class indexClass = collectionHandler.getIndexClass();
+					
 					List indexes = indexName != null ? new ArrayList() : null;
 					List values = variable != null ? new ArrayList() : null;
 					long batchIndex = 0;
-					for (Object single : (Iterable) value) {
-						// always add it to the list
-						if (indexes != null) {
-							indexes.add(index++);
+					// if we have an integer index, we assume it is a list-like structure with an incremental index
+					// for performance reasons it is much better to get the collection as iterable and generate the index rather than get the collection of indexes and use that versus the collection
+					if (Integer.class.isAssignableFrom(indexClass)) {
+						Iterable iterable = collectionHandler.getAsIterable(value);
+						int index = 0;
+						for (Object single : iterable) {
+							// always add it to the list
+							if (indexes != null) {
+								indexes.add(index++);
+							}
+							if (values != null) {
+								values.add(single);
+							}
+							batchIndex++;
+							// if we have reached the increment size, we run it
+							if (batchIndex == increment) {
+								context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+								
+								if (indexName != null) {
+									setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
+								}
+								if (variable != null) {
+									setVariable(context.getServiceInstance().getPipeline(), variable, values);
+								}
+								executeSteps(context);
+								addInto(context, resultingInto);
+								// check break count
+								if (context.mustBreak()) {
+									// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+									// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+									if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+										break;
+									}
+								}
+								batchIndex = 0;
+								if (indexes != null) {
+									indexes.clear();
+								}
+								if (values != null) {
+									values.clear();
+								}
+							}
+							if (isAborted()) {
+								break;
+							}
 						}
-						if (values != null) {
-							values.add(single);
-						}
-						batchIndex++;
-						// if we have reached the increment size, we run it
-						if (batchIndex == increment) {
+						// we have remaining in the batch...
+						if (batchIndex > 0) {
 							context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
 							if (indexName != null) {
 								setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
@@ -288,70 +399,59 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							}
 							executeSteps(context);
 							addInto(context, resultingInto);
-							// check break count
-							if (context.mustBreak()) {
-								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
-									break;
-								}
-							}
-							batchIndex = 0;
+						}
+					}
+					else {
+						for (Object index : collectionHandler.getIndexes(value)) {
+							// always add it to the list
 							if (indexes != null) {
-								indexes.clear();
+								indexes.add(index);
 							}
 							if (values != null) {
-								values.clear();
+								values.add(collectionHandler.get(value, index));
+							}
+							batchIndex++;
+							// if we have reached the increment size, we run it
+							if (batchIndex == increment) {
+								// cast the pipeline to the proper definition
+								// if the pipeline belongs to the parent, an additional local wrapper will be added
+								// if the pipeline belongs to this guy, it is unchanged
+								// if the pipeline belongs to a child scope, the additional parameters are unwrapped
+								// this means anything in this scope (NOT a child scope) is retained
+								context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+					
+								// now set the variables (if applicable)
+								if (indexName != null) {
+									setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
+								}
+								if (variable != null) {
+									setVariable(context.getServiceInstance().getPipeline(), variable, values);
+								}
+								executeSteps(context);
+								addInto(context, resultingInto);
+								// check break count
+								if (context.mustBreak()) {
+									// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+									// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+									if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+										break;
+									}
+								}
+								batchIndex = 0;
+								if (indexes != null) {
+									indexes.clear();
+								}
+								if (values != null) {
+									values.clear();
+								}
+							}
+							if (isAborted()) {
+								break;
 							}
 						}
-						if (isAborted()) {
-							break;
-						}
-					}
-					// we have remaining in the batch...
-					if (batchIndex > 0) {
-						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
-						}
-						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, values);
-						}
-						executeSteps(context);
-						addInto(context, resultingInto);
-					}
-				}
-			}
-			// shameless copy of the else {} adapted to work with batches...
-			// should probably be refactored at some point...
-			else if (this.batchSize != null) {
-				CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
-				if (collectionHandler == null) {
-					throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
-				}
-				Class indexClass = collectionHandler.getIndexClass();
-				
-				List indexes = indexName != null ? new ArrayList() : null;
-				List values = variable != null ? new ArrayList() : null;
-				long batchIndex = 0;
-				// if we have an integer index, we assume it is a list-like structure with an incremental index
-				// for performance reasons it is much better to get the collection as iterable and generate the index rather than get the collection of indexes and use that versus the collection
-				if (Integer.class.isAssignableFrom(indexClass)) {
-					Iterable iterable = collectionHandler.getAsIterable(value);
-					int index = 0;
-					for (Object single : iterable) {
-						// always add it to the list
-						if (indexes != null) {
-							indexes.add(index++);
-						}
-						if (values != null) {
-							values.add(single);
-						}
-						batchIndex++;
-						// if we have reached the increment size, we run it
-						if (batchIndex == increment) {
+						// we have remaining in the batch...
+						if (batchIndex > 0) {
 							context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-							
 							if (indexName != null) {
 								setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
 							}
@@ -360,51 +460,46 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 							}
 							executeSteps(context);
 							addInto(context, resultingInto);
-							// check break count
-							if (context.mustBreak()) {
-								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
-									break;
-								}
-							}
-							batchIndex = 0;
-							if (indexes != null) {
-								indexes.clear();
-							}
-							if (values != null) {
-								values.clear();
-							}
 						}
-						if (isAborted()) {
-							break;
-						}
-					}
-					// we have remaining in the batch...
-					if (batchIndex > 0) {
-						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
-						}
-						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, values);
-						}
-						executeSteps(context);
-						addInto(context, resultingInto);
 					}
 				}
 				else {
-					for (Object index : collectionHandler.getIndexes(value)) {
-						// always add it to the list
-						if (indexes != null) {
-							indexes.add(index);
+					CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
+					if (collectionHandler == null) {
+						throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
+					}
+					Class indexClass = collectionHandler.getIndexClass();
+					// if we have an integer index, we assume it is a list-like structure with an incremental index
+					// for performance reasons it is much better to get the collection as iterable and generate the index rather than get the collection of indexes and use that versus the collection
+					if (Integer.class.isAssignableFrom(indexClass)) {
+						Iterable iterable = collectionHandler.getAsIterable(value);
+						int index = 0;
+						for (Object single : iterable) {
+							context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
+							
+							if (indexName != null) {
+								setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
+							}
+							if (variable != null) {
+								setVariable(context.getServiceInstance().getPipeline(), variable, single);
+							}
+							executeSteps(context);
+							addInto(context, resultingInto);
+							// check break count
+							if (context.mustBreak()) {
+								// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
+								// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
+								if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+									break;
+								}
+							}
+							else if (isAborted()) {
+								break;
+							}
 						}
-						if (values != null) {
-							values.add(collectionHandler.get(value, index));
-						}
-						batchIndex++;
-						// if we have reached the increment size, we run it
-						if (batchIndex == increment) {
+					}
+					else {
+						for (Object index : collectionHandler.getIndexes(value)) {
 							// cast the pipeline to the proper definition
 							// if the pipeline belongs to the parent, an additional local wrapper will be added
 							// if the pipeline belongs to this guy, it is unchanged
@@ -414,10 +509,10 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 				
 							// now set the variables (if applicable)
 							if (indexName != null) {
-								setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
+								setVariable(context.getServiceInstance().getPipeline(), indexName, index);
 							}
 							if (variable != null) {
-								setVariable(context.getServiceInstance().getPipeline(), variable, values);
+								setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
 							}
 							executeSteps(context);
 							addInto(context, resultingInto);
@@ -429,103 +524,22 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 									break;
 								}
 							}
-							batchIndex = 0;
-							if (indexes != null) {
-								indexes.clear();
-							}
-							if (values != null) {
-								values.clear();
-							}
-						}
-						if (isAborted()) {
-							break;
-						}
-					}
-					// we have remaining in the batch...
-					if (batchIndex > 0) {
-						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, indexes);
-						}
-						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, values);
-						}
-						executeSteps(context);
-						addInto(context, resultingInto);
-					}
-				}
-			}
-			else {
-				CollectionHandlerProvider collectionHandler = CollectionHandlerFactory.getInstance().getHandler().getHandler(value.getClass());
-				if (collectionHandler == null) {
-					throw new IllegalArgumentException("The variable '" + value + "' does not point to a collection");
-				}
-				Class indexClass = collectionHandler.getIndexClass();
-				// if we have an integer index, we assume it is a list-like structure with an incremental index
-				// for performance reasons it is much better to get the collection as iterable and generate the index rather than get the collection of indexes and use that versus the collection
-				if (Integer.class.isAssignableFrom(indexClass)) {
-					Iterable iterable = collectionHandler.getAsIterable(value);
-					int index = 0;
-					for (Object single : iterable) {
-						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-						
-						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, index++);
-						}
-						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, single);
-						}
-						executeSteps(context);
-						addInto(context, resultingInto);
-						// check break count
-						if (context.mustBreak()) {
-							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
+							else if (isAborted()) {
 								break;
 							}
 						}
-						else if (isAborted()) {
-							break;
-						}
 					}
 				}
-				else {
-					for (Object index : collectionHandler.getIndexes(value)) {
-						// cast the pipeline to the proper definition
-						// if the pipeline belongs to the parent, an additional local wrapper will be added
-						// if the pipeline belongs to this guy, it is unchanged
-						// if the pipeline belongs to a child scope, the additional parameters are unwrapped
-						// this means anything in this scope (NOT a child scope) is retained
-						context.getServiceInstance().castPipeline(getPipeline(context.getExecutionContext().getServiceContext()));
-			
-						// now set the variables (if applicable)
-						if (indexName != null) {
-							setVariable(context.getServiceInstance().getPipeline(), indexName, index);
-						}
-						if (variable != null) {
-							setVariable(context.getServiceInstance().getPipeline(), variable, collectionHandler.get(value, index));
-						}
-						executeSteps(context);
-						addInto(context, resultingInto);
-						// check break count
-						if (context.mustBreak()) {
-							// if we are not the target of the break or we don't explicitly specify that we want to continue with execution, we break
-							// otherwise, we want to continue the loop, but we need to recalculate the value and update the index (see below)
-							if (context.decreaseBreakCount() != 0 || !context.isContinueExecution()) {
-								break;
-							}
-						}
-						else if (isAborted()) {
-							break;
-						}
-					}
+				
+				// we have been building a resultset, push it to the pipeline
+				if (into != null) {
+					setVariable(context.getServiceInstance().getPipeline(), into, resultingInto);
 				}
 			}
-			
-			// we have been building a resultset, push it to the pipeline
-			if (into != null) {
-				setVariable(context.getServiceInstance().getPipeline(), into, resultingInto);
+		}
+		finally {
+			if (pushExecutionFlags != null) {
+				pushExecutionFlags.run();
 			}
 		}
 	}
