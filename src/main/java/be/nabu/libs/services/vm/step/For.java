@@ -596,6 +596,7 @@ public class For extends BaseStepGroup implements LimitedStepGroup {
 		return this;
 	}
 
+	@XmlAttribute
 	public String getQuery() {
 		return query;
 	}
